@@ -34,5 +34,5 @@ public class UserDetails {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(name = "role", nullable = false)
-    private String role; // PATIENT, DOCTOR, ADMIN, LAB_TECH
+    private String role = "PATIENT"; // PATIENT, DOCTOR, ADMIN, LAB_TECH
 }

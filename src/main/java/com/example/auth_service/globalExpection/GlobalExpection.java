@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 @ControllerAdvice
 public class GlobalExpection {
 
-    @ExceptionHandler(UserNotFoundExpection.class)
-    public ResponseEntity<ErrorResponseDTO> handleUserNotFoundExpection(UserNotFoundExpection e){
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserNotFoundException(UserNotFoundException e){
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
                 e.getMessage(),
                 HttpStatus.NOT_FOUND.value(),
@@ -20,11 +20,21 @@ public class GlobalExpection {
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserAlreadyExistsException(UserAlreadyExistsException e){
+        ErrorResponseDTO errorResponseDTO = new ErrorResponseDTO(
+                e.getMessage(),
+                HttpStatus.BAD_REQUEST.value(),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(errorResponseDTO,HttpStatus.BAD_REQUEST);
+    }
+
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleGlobalExpection(Exception e){
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
-                "Something went wrong: " + e.getMessage(), // You can hide details in prod
+                "Something went wrong: " + e.getMessage(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 LocalDateTime.now()
         );
