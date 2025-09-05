@@ -1,49 +1,81 @@
 package com.example.auth_service.service.authServiceImp;
 
+import com.example.auth_service.config.JwtTokenProvider;
+import com.example.auth_service.dto.JwtResponse;
+import com.example.auth_service.dto.LoginRequestDto;
 import com.example.auth_service.dto.UserRegistrationRequest;
-import com.example.auth_service.dto.UserResponseDto;
 import com.example.auth_service.globalExpection.UserAlreadyExistsException;
-import com.example.auth_service.model.UserDetails;
+import com.example.auth_service.model.AppUser;
+import com.example.auth_service.model.Role;
+import com.example.auth_service.model.RoleName;
+import com.example.auth_service.respository.RoleRepository;
 import com.example.auth_service.respository.UserRepository;
 import com.example.auth_service.service.AuthService;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @AllArgsConstructor
 @Service
+@Slf4j
 public class AuthServiceImp implements AuthService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final JwtTokenProvider jwtTokenProvider;
 
+    // ------------------- Registration -------------------
     @Override
-    public UserDetails registerUser(UserRegistrationRequest request) {
+    public AppUser registerUser(UserRegistrationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
         }
 
-        // Convert DTO to entity
-        UserDetails user = new UserDetails();
+        // Create new user
+        AppUser user = new AppUser();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("PATIENT");
+
+        // Assign default role PATIENT
+        Role patientRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
+                .orElseThrow(() -> new RuntimeException("Default role not found"));
+
+        Set<Role> roles = new HashSet<>();
+        roles.add(patientRole);
+        user.setRoles(roles);
 
         return userRepository.save(user);
     }
 
-    public UserDetails loginUser(UserRegistrationRequest request) {
-        // 1. Find user by email
-        UserDetails userDetails = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + request.getEmail()));
+    // ------------------- Login -------------------
+    public JwtResponse loginUser(LoginRequestDto request) {
+        // Authenticate user
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
 
-        // 2. Compare raw password with hashed password
-        if (!passwordEncoder.matches(request.getPassword(), userDetails.getPassword())) {
-            throw new RuntimeException("Invalid password");
-        }
+        // Get authenticated user
+        AppUser user = (AppUser) authentication.getPrincipal();
 
-        // 3. Return user details if login successful
-        return userDetails;
+        // Generate JWT
+        String jwt = jwtTokenProvider.generateToken(authentication);
+
+        // Return JWT + user info
+        return new JwtResponse(
+                jwt,
+                "Bearer",
+                user.getUsername(),
+                user.getEmail()
+        );
     }
 }

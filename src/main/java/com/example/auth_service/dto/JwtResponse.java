@@ -3,12 +3,11 @@ package com.example.auth_service.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.util.Set;
-
 @Data
 @AllArgsConstructor
-public class UserResponseDto {
+public class JwtResponse {
+    private String token;       // JWT token
+    private String tokenType;   // Typically "Bearer"
     private String username;
     private String email;
-    private Set<String> roles; // multiple roles as Strings
 }
