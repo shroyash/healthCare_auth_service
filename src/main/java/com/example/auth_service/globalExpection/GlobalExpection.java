@@ -30,6 +30,17 @@ public class GlobalExpection {
         return new ResponseEntity<>(errorResponseDTO,HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(EmailSendException.class)
+    public ResponseEntity<ErrorResponseDTO> handleEmailSendException(EmailSendException e) {
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                e.getMessage(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleGlobalExpection(Exception e){
