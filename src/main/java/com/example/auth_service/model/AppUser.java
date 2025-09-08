@@ -13,7 +13,6 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @Table(name = "users") // table name
-
 public class AppUser {
 
     @Id
@@ -42,4 +41,9 @@ public class AppUser {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles = new HashSet<>();
+
+    // 👇 Add fields for password reset
+    private String resetToken;
+
+    private LocalDateTime tokenExpiry;
 }

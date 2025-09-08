@@ -40,7 +40,16 @@ public class GlobalExpection {
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-
+    // 👇 Add handler for ExpiredOrInvalidTokenException
+    @ExceptionHandler(ExpiredOrInvalidTokenException.class)
+    public ResponseEntity<ErrorResponseDTO> handleExpiredOrInvalidTokenException(ExpiredOrInvalidTokenException e){
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                e.getMessage(),
+                HttpStatus.BAD_REQUEST.value(), // 400 Bad Request is suitable here
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleGlobalExpection(Exception e){
@@ -51,4 +60,15 @@ public class GlobalExpection {
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    @ExceptionHandler(IncorrectOldPasswordException.class)
+    public ResponseEntity<ErrorResponseDTO> handleIncorrectOldPassword(IncorrectOldPasswordException e) {
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                e.getMessage(),
+                HttpStatus.BAD_REQUEST.value(),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
 }

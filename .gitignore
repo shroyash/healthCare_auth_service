@@ -36,3 +36,7 @@ build/
 private.pem
 id_rsa
 *.pem
+
+# .gitignore
+.env
+src/main/resources/application.properties

@@ -5,6 +5,7 @@ import com.example.auth_service.model.AppUser;
 import com.example.auth_service.service.AuthService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.stream.Collectors;
@@ -40,7 +41,38 @@ public class AuthController {
 
     @PostMapping("/forget-password")
     public ResponseEntity<?> forgetPassword(@RequestBody ForgotPasswordRequest request){
-        String email = request.getEmail();
-
+        authService.forgetPassword(request);
+        return ResponseEntity.ok("OTP has been sent to your email successfully");
     }
+
+
+    @PostMapping("/verify-reset-token")
+    public ResponseEntity<?> verifyResetToken(@RequestBody VerifyResetTokenRequest request) {
+        boolean isValid = authService.verifyResetToken(request);
+
+        if (isValid) {
+            return ResponseEntity.ok("Token is valid");
+        } else {
+            return ResponseEntity.status(400).body("Invalid or expired token");
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok("Password reset successfully");
+    }
+
+    @PutMapping("/users/me/change-password")
+    public ResponseEntity<?> changePassword(
+            @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal AppUser currentUser
+    ) {
+        // currentUser is automatically the logged-in user
+        authService.changePassword(currentUser, request);
+        return ResponseEntity.ok("Password changed successfully");
+    }
+
+
+
 }

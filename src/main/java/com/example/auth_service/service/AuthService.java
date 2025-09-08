@@ -1,13 +1,13 @@
 package com.example.auth_service.service;
 
-import com.example.auth_service.dto.ForgotPasswordRequest;
-import com.example.auth_service.dto.JwtResponse;
-import com.example.auth_service.dto.LoginRequestDto;
-import com.example.auth_service.dto.UserRegistrationRequest;
+import com.example.auth_service.dto.*;
 import com.example.auth_service.model.AppUser;
 
 public interface AuthService {
     AppUser registerUser(UserRegistrationRequest request);
     JwtResponse loginUser(LoginRequestDto request);
     void forgetPassword(ForgotPasswordRequest request);
+    boolean verifyResetToken(VerifyResetTokenRequest request);
+    void resetPassword(ResetPasswordRequest request);
+    void changePassword(AppUser user,ChangePasswordRequest request);
 }

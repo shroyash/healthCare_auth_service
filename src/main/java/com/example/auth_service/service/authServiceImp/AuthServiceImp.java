@@ -1,10 +1,9 @@
 package com.example.auth_service.service.authServiceImp;
 
 import com.example.auth_service.config.JwtTokenProvider;
-import com.example.auth_service.dto.ForgotPasswordRequest;
-import com.example.auth_service.dto.JwtResponse;
-import com.example.auth_service.dto.LoginRequestDto;
-import com.example.auth_service.dto.UserRegistrationRequest;
+import com.example.auth_service.dto.*;
+import com.example.auth_service.globalExpection.ExpiredOrInvalidTokenException;
+import com.example.auth_service.globalExpection.IncorrectOldPasswordException;
 import com.example.auth_service.globalExpection.UserAlreadyExistsException;
 import com.example.auth_service.globalExpection.UserNotFoundException;
 import com.example.auth_service.model.AppUser;
@@ -22,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -99,6 +99,56 @@ public class AuthServiceImp implements AuthService {
                 "Password Reset Code",
                 "Your password reset code is: " + token + ". It expires in 1 minute."
         );
+    }
+
+    @Override
+    public boolean verifyResetToken(VerifyResetTokenRequest request) {
+        AppUser user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (user.getResetToken() == null || user.getTokenExpiry() == null) {
+            return false;
+        }
+
+        if (!user.getResetToken().equals(request.getToken())) {
+            return false;
+        }
+
+        if (user.getTokenExpiry().isBefore(LocalDateTime.now())) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        AppUser user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (user.getResetToken() == null || user.getTokenExpiry() == null ||
+                !user.getResetToken().equals(request.getToken()) ||
+                user.getTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new ExpiredOrInvalidTokenException();
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
+        // clear token so it can’t be reused
+        user.setResetToken(null);
+        user.setTokenExpiry(null);
+
+        userRepository.save(user);
+    }
+
+    @Override
+    public void changePassword(AppUser user, ChangePasswordRequest request) {
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new IncorrectOldPasswordException();
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
 }
