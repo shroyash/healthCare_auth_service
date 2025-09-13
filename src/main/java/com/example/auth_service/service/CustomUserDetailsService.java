@@ -3,7 +3,7 @@ package com.example.auth_service.service;
 import com.example.auth_service.globalExpection.UserNotFoundException;
 import com.example.auth_service.model.AppUser;
 import com.example.auth_service.model.RoleName;
-import com.example.auth_service.respository.UserRepository;
+import com.example.auth_service.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -31,7 +31,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         if (user.getRoles() != null && !user.getRoles().isEmpty()) {
             authorities = user.getRoles().stream()
-                    .map(role -> new SimpleGrantedAuthority(role.getName()))
+                    .map(role -> new SimpleGrantedAuthority(role.getName().name()))
                     .collect(Collectors.toList());
         } else {
             authorities = Collections.singletonList(

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @AllArgsConstructor
 public class AuthController {
 
@@ -72,7 +72,5 @@ public class AuthController {
         authService.changePassword(currentUser, request);
         return ResponseEntity.ok("Password changed successfully");
     }
-
-
 
 }
