@@ -1,10 +1,10 @@
-HELP.md
+# Maven
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### STS ###
+# Eclipse / STS
 .apt_generated
 .classpath
 .factorypath
@@ -13,30 +13,30 @@ target/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
+# IntelliJ IDEA
 .idea
 *.iws
 *.iml
 *.ipr
 
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
-/.nb-gradle/
-build/
+.build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
+# VS Code
 .vscode/
 
-### Private keys ###
+# Environment files and secrets
+.env
+src/main/resources/application.properties
 private.pem
 id_rsa
 *.pem
 
-# .gitignore
-.env
-src/main/resources/application.properties
+# Logs
+*.log

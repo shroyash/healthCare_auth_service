@@ -1,6 +1,7 @@
 package com.example.auth_service.service.authServiceImp;
 
 import com.example.auth_service.dto.UserResponseDto;
+import com.example.auth_service.globalExpection.RoleNotFoundExpection;
 import com.example.auth_service.globalExpection.UserNotFoundException;
 import com.example.auth_service.model.AppUser;
 import com.example.auth_service.model.Role;
@@ -60,7 +61,7 @@ public class AdminServiceImp implements AdminService {
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         Role role = roleRepository.findByName(newRole)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+                .orElseThrow(() -> new RoleNotFoundExpection("Role not found"));
 
         user.getRoles().clear();
         user.getRoles().add(role);

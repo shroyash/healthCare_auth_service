@@ -70,5 +70,14 @@ public class GlobalExpection {
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
+    @ExceptionHandler(RoleNotFoundExpection.class)
+    public ResponseEntity<ErrorResponseDTO> handleRoleNotFoundExpection(RoleNotFoundExpection e) {
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                e.getMessage(),
+                HttpStatus.BAD_REQUEST.value(),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
 
 }

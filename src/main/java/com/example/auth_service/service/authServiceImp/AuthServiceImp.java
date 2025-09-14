@@ -2,10 +2,7 @@ package com.example.auth_service.service.authServiceImp;
 
 import com.example.auth_service.config.JwtTokenProvider;
 import com.example.auth_service.dto.*;
-import com.example.auth_service.globalExpection.ExpiredOrInvalidTokenException;
-import com.example.auth_service.globalExpection.IncorrectOldPasswordException;
-import com.example.auth_service.globalExpection.UserAlreadyExistsException;
-import com.example.auth_service.globalExpection.UserNotFoundException;
+import com.example.auth_service.globalExpection.*;
 import com.example.auth_service.model.AppUser;
 import com.example.auth_service.model.Role;
 import com.example.auth_service.model.RoleName;
@@ -52,7 +49,7 @@ public class AuthServiceImp implements AuthService {
 
         // Assign default role PATIENT
         Role patientRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
-                .orElseThrow(() -> new RuntimeException("Default role not found"));
+                .orElseThrow(() -> new RoleNotFoundExpection("Default role not found"));
 
         Set<Role> roles = new HashSet<>();
         roles.add(patientRole);

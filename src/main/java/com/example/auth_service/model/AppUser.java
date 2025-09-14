@@ -3,9 +3,13 @@ package com.example.auth_service.model;
 import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Entity
 @Data
@@ -13,7 +17,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @Table(name = "users") // table name
-public class AppUser {
+public class AppUser implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,8 +46,51 @@ public class AppUser {
     )
     private Set<Role> roles = new HashSet<>();
 
-    // 👇 Add fields for password reset
+    // 👇 Password reset fields
     private String resetToken;
-
     private LocalDateTime tokenExpiry;
+
+    // 👇 Implement UserDetails methods
+
+    @Override
+    @JsonIgnore
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (roles == null || roles.isEmpty()) {
+            // default role if no role assigned
+            return List.of(new SimpleGrantedAuthority("ROLE_PATIENT"));
+        }
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @JsonIgnore
+    public String getUsername() {
+        return email; // Spring Security will use email to login
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isEnabled() {
+        return true;
+    }
 }
