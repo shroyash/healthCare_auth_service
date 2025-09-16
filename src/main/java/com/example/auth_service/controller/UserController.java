@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
-
     // Get logged-in user profile
     @GetMapping("/me")
     public ResponseEntity<UserResponseDto> getProfile(@AuthenticationPrincipal AppUser currentUser) {

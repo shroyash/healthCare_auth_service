@@ -5,7 +5,6 @@ import io.jsonwebtoken.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import java.security.PrivateKey;
@@ -29,7 +28,7 @@ public class JwtTokenProvider {
         this.publicKey = publicKey;
     }
 
-    /** Generating JWT token using RSA private key */
+    /** Generate JWT token using RSA private key */
     public String generateToken(Authentication authentication) {
         AppUser user = (AppUser) authentication.getPrincipal();
 
@@ -52,6 +51,16 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    /** Extract username (email) from token */
+    public String getUsernameFromToken(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(publicKey)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+
+        return claims.getSubject();
+    }
 
     /** Validate JWT token using RSA public key with detailed logging */
     public boolean validateToken(String token) {
@@ -72,5 +81,4 @@ public class JwtTokenProvider {
         }
         return false;
     }
-
 }
