@@ -1,0 +1,16 @@
+# Dockerfile.dev
+
+# Base image with Maven + JDK
+FROM maven:3.9.4-eclipse-temurin-21
+
+# Set working directory
+WORKDIR /app
+
+# Copy your source code
+COPY . .
+
+# Expose the port
+EXPOSE 8003
+
+# Run Spring Boot directly from source
+CMD ["mvn", "spring-boot:run"]

@@ -17,8 +17,8 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/register")
-    public ResponseEntity<UserResponseDto> register(@RequestBody UserRegistrationRequest request) {
+    @PostMapping("/register/patient")
+    public ResponseEntity<UserResponseDto> registerPatient(@RequestBody UserRegistrationRequest request) {
         AppUser savedUser = authService.registerUser(request);
 
         UserResponseDto response = new UserResponseDto(
@@ -27,9 +27,22 @@ public class AuthController {
                 savedUser.getRoles().stream()
                         .map(role -> role.getName().name())
                         .collect(Collectors.toSet())
-
         );
 
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/register/doctor")
+    public ResponseEntity<UserResponseDto> registerDoctor(@RequestBody DoctorRegistrationRequest request) {
+        AppUser savedUser = authService.registerDoctor(request);
+        UserResponseDto response = new UserResponseDto(
+                savedUser.getUsername(),
+                savedUser.getEmail(),
+                savedUser.getRoles().stream()
+                        .map(role -> role.getName().name())
+                        .collect(Collectors.toSet())
+
+        );
         return ResponseEntity.ok(response);
     }
 

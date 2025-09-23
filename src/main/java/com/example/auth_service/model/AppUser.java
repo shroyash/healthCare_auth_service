@@ -35,9 +35,11 @@ public class AppUser implements UserDetails {
     @Column(nullable = false)
     private String password;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",
@@ -46,11 +48,11 @@ public class AppUser implements UserDetails {
     )
     private Set<Role> roles = new HashSet<>();
 
-    // 👇 Password reset fields
+    // Password reset fields
     private String resetToken;
     private LocalDateTime tokenExpiry;
 
-    // 👇 Implement UserDetails methods
+    // Implement UserDetails methods
 
     @Override
     @JsonIgnore

@@ -2,6 +2,7 @@ package com.example.auth_service.service.authServiceImp;
 
 import com.example.auth_service.config.JwtTokenProvider;
 import com.example.auth_service.dto.*;
+import com.example.auth_service.feign.HealthCareClient;
 import com.example.auth_service.globalExpection.*;
 import com.example.auth_service.model.AppUser;
 import com.example.auth_service.model.Role;
@@ -33,6 +34,7 @@ public class AuthServiceImp implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
+    private final HealthCareClient healthCareClient;
 
 
     @Override
@@ -57,6 +59,30 @@ public class AuthServiceImp implements AuthService {
 
         return userRepository.save(user);
     }
+
+    @Override
+    public AppUser registerDoctor(DoctorRegistrationRequest request) {
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new UserAlreadyExistsException("Email already in use");
+        }
+
+        AppUser user = new AppUser();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        // Assign role DOCTOR
+        Role doctorRole = roleRepository.findByName(RoleName.ROLE_DOCTOR)
+                .orElseThrow(() -> new RoleNotFoundExpection("Doctor role not found"));
+
+        user.setRoles(Set.of(doctorRole));
+
+        AppUser savedUser = userRepository.save(user);
+        healthCareClient.createDoctor(request);
+        return savedUser;
+    }
+
 
 
     public JwtResponse loginUser(LoginRequestDto request) {
