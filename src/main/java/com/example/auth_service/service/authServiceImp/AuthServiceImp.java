@@ -2,11 +2,12 @@ package com.example.auth_service.service.authServiceImp;
 
 import com.example.auth_service.config.JwtTokenProvider;
 import com.example.auth_service.dto.*;
-import com.example.auth_service.feign.HealthCareClient;
 import com.example.auth_service.globalExpection.*;
 import com.example.auth_service.model.AppUser;
+import com.example.auth_service.model.DoctorRequest;
 import com.example.auth_service.model.Role;
 import com.example.auth_service.model.RoleName;
+import com.example.auth_service.repository.DoctorReqRepository;
 import com.example.auth_service.repository.RoleRepository;
 import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.service.AuthService;
@@ -29,12 +30,12 @@ import java.util.Set;
 public class AuthServiceImp implements AuthService {
 
     private final UserRepository userRepository;
+    private final DoctorReqRepository doctorReqRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
-    private final HealthCareClient healthCareClient;
 
 
     @Override
@@ -79,7 +80,13 @@ public class AuthServiceImp implements AuthService {
         user.setRoles(Set.of(doctorRole));
 
         AppUser savedUser = userRepository.save(user);
-        healthCareClient.createDoctor(request);
+
+        DoctorRequest doctorRequest = DoctorRequest.builder()
+                .doctorLicence(request.getLicenseDocumentUrl())
+                .status(null)
+                .build();
+        doctorReqRepository.save(doctorRequest);
+
         return savedUser;
     }
 

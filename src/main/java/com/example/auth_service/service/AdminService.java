@@ -1,10 +1,15 @@
 package com.example.auth_service.service;
 
+import com.example.auth_service.dto.DoctorRequestDto;
+import com.example.auth_service.dto.DoctorRequestResponse;
 import com.example.auth_service.dto.UserResponseDto;
+import com.example.auth_service.model.DoctorRequest;
 import com.example.auth_service.model.RoleName;
 import com.example.auth_service.model.AppUser;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 public interface AdminService {
 
@@ -19,4 +24,11 @@ public interface AdminService {
 
     // Change user role
     UserResponseDto changeUserRole(Long userId, RoleName newRole);
+
+    List<DoctorRequestDto> getPendingDoctorRequests();
+
+    List<DoctorRequestDto> getAllDoctorRequests();
+
+    DoctorRequestResponse setRejectOrAccept(Long doctorReqId, boolean approve);
+
 }

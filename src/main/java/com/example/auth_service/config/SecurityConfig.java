@@ -62,12 +62,14 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // ✅ no session
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/healthcare/**","/oauth2/**").permitAll()
+                        .requestMatchers("/auth/**","/oauth2/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                // ✅ register JWT filter before Spring’s UsernamePasswordAuthenticationFilter
+                // register JWT filter before Spring’s UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
+
 }

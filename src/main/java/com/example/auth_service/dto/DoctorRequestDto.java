@@ -1,5 +1,6 @@
 package com.example.auth_service.dto;
 
+import com.example.auth_service.model.DoctorRequestStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,9 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DoctorRequestResponse {
-    private String message;
-    private String status;
-    private Long doctorReqId;
-    private String doctorName;
+public class DoctorRequestDto {
+    private String doctorLicence;
+    private DoctorRequestStatus status;
 }
