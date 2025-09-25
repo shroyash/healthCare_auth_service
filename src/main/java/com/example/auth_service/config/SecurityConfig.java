@@ -63,6 +63,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // ✅ no session
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**","/oauth2/**").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 // register JWT filter before Spring’s UsernamePasswordAuthenticationFilter

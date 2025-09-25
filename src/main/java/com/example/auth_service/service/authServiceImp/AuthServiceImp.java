@@ -3,10 +3,7 @@ package com.example.auth_service.service.authServiceImp;
 import com.example.auth_service.config.JwtTokenProvider;
 import com.example.auth_service.dto.*;
 import com.example.auth_service.globalExpection.*;
-import com.example.auth_service.model.AppUser;
-import com.example.auth_service.model.DoctorRequest;
-import com.example.auth_service.model.Role;
-import com.example.auth_service.model.RoleName;
+import com.example.auth_service.model.*;
 import com.example.auth_service.repository.DoctorReqRepository;
 import com.example.auth_service.repository.RoleRepository;
 import com.example.auth_service.repository.UserRepository;
@@ -51,12 +48,23 @@ public class AuthServiceImp implements AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         // Assign default role PATIENT
-        Role patientRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
-                .orElseThrow(() -> new RoleNotFoundExpection("Default role not found"));
+        if(request.getEmail().equals("admins@gmail.com")){
+            Role adminRole = roleRepository.findByName(RoleName.ROLE_ADMIN)
+                    .orElseThrow(() -> new RoleNotFoundExpection("Admin role not found"));
 
-        Set<Role> roles = new HashSet<>();
-        roles.add(patientRole);
-        user.setRoles(roles);
+            Set<Role> roles = new HashSet<>();
+            roles.add(adminRole);
+            user.setRoles(roles);
+
+        }else{
+            Role patientRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
+                    .orElseThrow(() -> new RoleNotFoundExpection("Default role not found"));
+
+            Set<Role> roles = new HashSet<>();
+            roles.add(patientRole);
+            user.setRoles(roles);
+
+        }
 
         return userRepository.save(user);
     }
@@ -73,9 +81,9 @@ public class AuthServiceImp implements AuthService {
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        // Assign role DOCTOR
-        Role doctorRole = roleRepository.findByName(RoleName.ROLE_DOCTOR)
-                .orElseThrow(() -> new RoleNotFoundExpection("Doctor role not found"));
+        // Assign default role
+        Role doctorRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
+                .orElseThrow(() -> new RoleNotFoundExpection("default role not found"));
 
         user.setRoles(Set.of(doctorRole));
 
@@ -83,10 +91,11 @@ public class AuthServiceImp implements AuthService {
 
         DoctorRequest doctorRequest = DoctorRequest.builder()
                 .doctorLicence(request.getLicenseDocumentUrl())
-                .status(null)
+                .status(DoctorRequestStatus.PENDING)
+                .user(savedUser)
                 .build();
-        doctorReqRepository.save(doctorRequest);
 
+        doctorReqRepository.save(doctorRequest);
         return savedUser;
     }
 

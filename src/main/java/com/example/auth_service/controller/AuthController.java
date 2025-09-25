@@ -33,17 +33,9 @@ public class AuthController {
     }
 
     @PostMapping("/register/doctor")
-    public ResponseEntity<UserResponseDto> registerDoctor(@RequestBody DoctorRegistrationRequest request) {
-        AppUser savedUser = authService.registerDoctor(request);
-        UserResponseDto response = new UserResponseDto(
-                savedUser.getUsername(),
-                savedUser.getEmail(),
-                savedUser.getRoles().stream()
-                        .map(role -> role.getName().name())
-                        .collect(Collectors.toSet())
-
-        );
-        return ResponseEntity.ok(response);
+    public ResponseEntity<String> registerDoctor(@RequestBody DoctorRegistrationRequest request) {
+        authService.registerDoctor(request);
+        return ResponseEntity.ok("Your doctor registration request has been sent to admin. Please wait for approval in email.");
     }
 
     @PostMapping("/login")

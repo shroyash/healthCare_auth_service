@@ -48,17 +48,13 @@ public class AppUser implements UserDetails {
     )
     private Set<Role> roles = new HashSet<>();
 
-    // Password reset fields
     private String resetToken;
     private LocalDateTime tokenExpiry;
-
-    // Implement UserDetails methods
 
     @Override
     @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (roles == null || roles.isEmpty()) {
-            // default role if no role assigned
             return List.of(new SimpleGrantedAuthority("ROLE_PATIENT"));
         }
         return roles.stream()
@@ -69,7 +65,7 @@ public class AppUser implements UserDetails {
     @Override
     @JsonIgnore
     public String getUsername() {
-        return email; // Spring Security will use email to login
+        return email; // login via email
     }
 
     @Override

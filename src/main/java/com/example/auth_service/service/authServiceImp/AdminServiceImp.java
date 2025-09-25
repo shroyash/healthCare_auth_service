@@ -10,11 +10,13 @@ import com.example.auth_service.repository.DoctorReqRepository;
 import com.example.auth_service.repository.RoleRepository;
 import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.service.AdminService;
+import com.example.auth_service.service.EmailService;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,6 +27,7 @@ public class AdminServiceImp implements AdminService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final DoctorReqRepository doctorReqRepository;
+    private final EmailService emailService;
 
     @Override
     public Page<UserResponseDto> getAllUsers(Pageable pageable) {
@@ -86,9 +89,7 @@ public class AdminServiceImp implements AdminService {
         return doctorReqRepository.findAll()
                 .stream()
                 .map(dr -> DoctorRequestDto.builder()
-                        .doctorReqId(dr.getDoctorReqId())
-                        .doctorName(dr.getUser().getUsername())
-                        .doctorEmail(dr.getUser().getEmail())
+                        .doctorLicence(dr.getDoctorLicence())
                         .status(dr.getStatus())
                         .build())
                 .toList();
@@ -103,9 +104,7 @@ public class AdminServiceImp implements AdminService {
         return doctorReqRepository.findByStatus(DoctorRequestStatus.PENDING)
                 .stream()
                 .map(dr -> DoctorRequestDto.builder()
-                        .doctorReqId(dr.getDoctorReqId())
-                        .doctorName(dr.getUser().getUsername())
-                        .doctorEmail(dr.getUser().getEmail())
+                        .doctorLicence(dr.getDoctorLicence())
                         .status(dr.getStatus())
                         .build())
                 .toList();
@@ -121,22 +120,48 @@ public class AdminServiceImp implements AdminService {
 
         if (approve) {
             request.setStatus(DoctorRequestStatus.APPROVED);
+
             Role doctorRole = roleRepository.findByName(RoleName.ROLE_DOCTOR)
                     .orElseThrow(() -> new RoleNotFoundExpection("Role not found"));
 
+            if (user.getRoles() == null) {
+                user.setRoles(new HashSet<>());
+            }
             user.getRoles().add(doctorRole);
+
+            doctorReqRepository.save(request);
+            userRepository.save(user);
+
+            emailService.sendEmail(
+                    user.getEmail(),
+                    "Doctor Account Approved",
+                    "Congratulations! Your doctor registration has been approved. You can now log in and access your doctor dashboard."
+            );
+
+
+            return DoctorRequestResponse.builder()
+                    .doctorReqId(request.getDoctorReqId())
+                    .doctorName(user.getUsername())
+                    .status(request.getStatus().name())
+                    .message("Doctor approved successfully")
+                    .build();
+
         } else {
             request.setStatus(DoctorRequestStatus.REJECTED);
+
+            // keep rejected request in DB for history
+            doctorReqRepository.save(request);
+
+            // delete user so they can register again with same username but new licence
+            userRepository.delete(user);
+
+            return DoctorRequestResponse.builder()
+                    .doctorReqId(request.getDoctorReqId())
+                    .doctorName(user.getUsername())
+                    .status(request.getStatus().name())
+                    .message("Doctor rejected and user removed")
+                    .build();
         }
-
-        doctorReqRepository.save(request);
-        userRepository.save(user);
-
-        return DoctorRequestResponse.builder()
-                .doctorReqId(request.getDoctorReqId())
-                .doctorName(user.getUsername())
-                .status(request.getStatus().name())
-                .message(approve ? "Doctor approved successfully" : "Doctor rejected")
-                .build();
     }
+
 }

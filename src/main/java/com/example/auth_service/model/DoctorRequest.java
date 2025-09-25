@@ -27,7 +27,7 @@ public class DoctorRequest {
     @Column(nullable = false)
     private DoctorRequestStatus status = DoctorRequestStatus.PENDING;
 
-    @OneToOne
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private AppUser user;
 }
