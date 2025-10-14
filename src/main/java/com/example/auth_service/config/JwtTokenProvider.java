@@ -9,9 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Component
 public class JwtTokenProvider {
@@ -80,5 +78,30 @@ public class JwtTokenProvider {
             logger.warn("JWT token is null or empty: {}", ex.getMessage());
         }
         return false;
+    }
+    @SuppressWarnings("unchecked")
+    public Set<String> getRolesFromToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(publicKey)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            Object rolesObj = claims.get("roles");
+            logger.info("Raw roles from token: {}", rolesObj);
+
+            if (rolesObj instanceof List) {
+                Set<String> roles = new HashSet<>((List<String>) rolesObj);
+                logger.info("Parsed roles from token: {}", roles);
+                return roles;
+            }
+
+            logger.warn("No roles found in token or invalid format");
+            return new HashSet<>();
+        } catch (Exception e) {
+            logger.error("Error extracting roles from token: {}", e.getMessage());
+            return new HashSet<>();
+        }
     }
 }

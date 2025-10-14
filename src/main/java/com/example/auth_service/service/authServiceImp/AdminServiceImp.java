@@ -104,6 +104,9 @@ public class AdminServiceImp implements AdminService {
         return doctorReqRepository.findByStatus(DoctorRequestStatus.PENDING)
                 .stream()
                 .map(dr -> DoctorRequestDto.builder()
+                        .doctorReqId(dr.getDoctorReqId())
+                        .userName(dr.getUser().getUsername())
+                        .email(dr.getUser().getEmail())
                         .doctorLicence(dr.getDoctorLicence())
                         .status(dr.getStatus())
                         .build())
@@ -132,12 +135,11 @@ public class AdminServiceImp implements AdminService {
             doctorReqRepository.save(request);
             userRepository.save(user);
 
-            emailService.sendEmail(
-                    user.getEmail(),
-                    "Doctor Account Approved",
-                    "Congratulations! Your doctor registration has been approved. You can now log in and access your doctor dashboard."
-            );
-
+//            emailService.sendEmail(
+//                    user.getEmail(),
+//                    "Doctor Account Approved",
+//                    "Congratulations! Your doctor registration has been approved. You can now log in and access your doctor dashboard."
+//            );
 
             return DoctorRequestResponse.builder()
                     .doctorReqId(request.getDoctorReqId())

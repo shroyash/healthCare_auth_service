@@ -14,7 +14,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 @EnableMethodSecurity(prePostEnabled = true)
 public class AuthServiceApplication {
     public static void main(String[] args) {
-        System.out.println("Starting application with explicit JPA repository scanning...");
         SpringApplication.run(AuthServiceApplication.class, args);
     }
 }

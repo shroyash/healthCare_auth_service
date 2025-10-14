@@ -6,7 +6,6 @@ import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.service.UserService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.util.stream.Collectors;
 
 @Service

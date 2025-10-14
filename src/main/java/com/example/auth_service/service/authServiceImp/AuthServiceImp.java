@@ -2,6 +2,7 @@ package com.example.auth_service.service.authServiceImp;
 
 import com.example.auth_service.config.JwtTokenProvider;
 import com.example.auth_service.dto.*;
+import com.example.auth_service.feign.HealthcareServiceClient;
 import com.example.auth_service.globalExpection.*;
 import com.example.auth_service.model.*;
 import com.example.auth_service.repository.DoctorReqRepository;
@@ -9,7 +10,10 @@ import com.example.auth_service.repository.RoleRepository;
 import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.service.AuthService;
 import com.example.auth_service.service.EmailService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @AllArgsConstructor
@@ -33,7 +38,7 @@ public class AuthServiceImp implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
-
+    private final HealthcareServiceClient healthcareServiceClient;
 
     @Override
     public AppUser registerUser(UserRegistrationRequest request) {
@@ -55,15 +60,13 @@ public class AuthServiceImp implements AuthService {
             Set<Role> roles = new HashSet<>();
             roles.add(adminRole);
             user.setRoles(roles);
-
-        }else{
+        } else {
             Role patientRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
                     .orElseThrow(() -> new RoleNotFoundExpection("Default role not found"));
 
             Set<Role> roles = new HashSet<>();
             roles.add(patientRole);
             user.setRoles(roles);
-
         }
 
         return userRepository.save(user);
@@ -71,7 +74,6 @@ public class AuthServiceImp implements AuthService {
 
     @Override
     public AppUser registerDoctor(DoctorRegistrationRequest request) {
-
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
         }
@@ -90,7 +92,7 @@ public class AuthServiceImp implements AuthService {
         AppUser savedUser = userRepository.save(user);
 
         DoctorRequest doctorRequest = DoctorRequest.builder()
-                .doctorLicence(request.getLicenseDocumentUrl())
+                .doctorLicence(request.getLicense())
                 .status(DoctorRequestStatus.PENDING)
                 .user(savedUser)
                 .build();
@@ -99,8 +101,7 @@ public class AuthServiceImp implements AuthService {
         return savedUser;
     }
 
-
-
+    @Override
     public JwtResponse loginUser(LoginRequestDto request) {
         // Authenticate user
         Authentication authentication = authenticationManager.authenticate(
@@ -120,6 +121,68 @@ public class AuthServiceImp implements AuthService {
                 user.getUsername(),
                 user.getEmail()
         );
+    }
+
+    @Override
+    public LoginResponseDto loginUserWithCookie(LoginRequestDto request, HttpServletResponse response) {
+
+        JwtResponse jwtResponse = loginUser(request);
+
+        Set<String> roleList = jwtTokenProvider.getRolesFromToken(jwtResponse.getToken());
+
+        setJwtCookie(response, jwtResponse.getToken());
+        createHealthcareProfile(jwtResponse.getToken(),roleList);
+
+        return new LoginResponseDto(
+                "Login successful",
+                jwtResponse.getUsername(),
+                jwtResponse.getEmail()
+        );
+    }
+
+
+    public void createHealthcareProfile(String token, Set<String> roleList) {
+        try {
+            boolean isDoctor = roleList.stream()
+                    .anyMatch(role -> role.equalsIgnoreCase("ROLE_DOCTOR") || role.equalsIgnoreCase("DOCTOR_ROLE"));
+
+            if (isDoctor) {
+                healthcareServiceClient.createDoctorProfile(token);
+                log.info("Doctor profile creation request sent successfully.");
+            } else {
+                healthcareServiceClient.createPatientProfile(token);
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to create healthcare profile for user: {}", e.getMessage());
+        }
+    }
+
+
+    @Override
+    public void logout(HttpServletResponse response) {
+        // Clear the JWT cookie
+        clearJwtCookie(response);
+    }
+
+    private void setJwtCookie(HttpServletResponse response, String jwt) {
+        Cookie cookie = new Cookie("jwt", jwt);
+        cookie.setHttpOnly(true);           // Prevents XSS attacks
+        cookie.setSecure(false);            // Set to true in production (HTTPS)
+        cookie.setPath("/");                // Available for entire application
+        cookie.setMaxAge(60 * 60);          // 1 hour expiration
+
+        response.addCookie(cookie);
+    }
+
+    private void clearJwtCookie(HttpServletResponse response) {
+        Cookie cookie = new Cookie("jwt", "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false);            // Match the same settings as setJwtCookie
+        cookie.setPath("/");
+        cookie.setMaxAge(0);                // Expire immediately
+
+        response.addCookie(cookie);
     }
 
     @Override
@@ -173,7 +236,7 @@ public class AuthServiceImp implements AuthService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
 
-        // clear token so it can’t be reused
+        // Clear token so it can't be reused
         user.setResetToken(null);
         user.setTokenExpiry(null);
 
@@ -189,5 +252,4 @@ public class AuthServiceImp implements AuthService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
     }
-
 }

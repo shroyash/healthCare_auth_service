@@ -16,7 +16,7 @@ public class DoctorRegistrationRequest {
         private String password;
 
         @JsonProperty("license")
-        private String licenseDocumentUrl;
+        private String license;
 }
 
 

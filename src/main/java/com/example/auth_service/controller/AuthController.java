@@ -3,6 +3,7 @@ package com.example.auth_service.controller;
 import com.example.auth_service.dto.*;
 import com.example.auth_service.model.AppUser;
 import com.example.auth_service.service.AuthService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -11,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 @AllArgsConstructor
 public class AuthController {
 
@@ -38,10 +39,28 @@ public class AuthController {
         return ResponseEntity.ok("Your doctor registration request has been sent to admin. Please wait for approval in email.");
     }
 
+    // Original token-based login (keep for API clients)
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> loginUser(@RequestBody LoginRequestDto request) {
         JwtResponse jwtResponse = authService.loginUser(request);
         return ResponseEntity.ok(jwtResponse);
+    }
+
+    // New cookie-based login for web clients
+    @PostMapping("/login-web")
+    public ResponseEntity<LoginResponseDto> loginUserWeb(
+            @RequestBody LoginRequestDto request,
+            HttpServletResponse response) {
+
+        LoginResponseDto loginResponse = authService.loginUserWithCookie(request, response);
+        return ResponseEntity.ok(loginResponse);
+    }
+
+    // Logout endpoint for web clients
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(HttpServletResponse response) {
+        authService.logout(response);
+        return ResponseEntity.ok("Logged out successfully");
     }
 
     @PostMapping("/forget-password")
@@ -49,7 +68,6 @@ public class AuthController {
         authService.forgetPassword(request);
         return ResponseEntity.ok("OTP has been sent to your email successfully");
     }
-
 
     @PostMapping("/verify-reset-token")
     public ResponseEntity<?> verifyResetToken(@RequestBody VerifyResetTokenRequest request) {
@@ -77,5 +95,4 @@ public class AuthController {
         authService.changePassword(currentUser, request);
         return ResponseEntity.ok("Password changed successfully");
     }
-
 }

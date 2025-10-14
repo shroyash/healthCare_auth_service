@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/admin")
+@RequestMapping("/api/admin")
 @AllArgsConstructor
 public class AdminController {
 
@@ -76,8 +76,5 @@ public class AdminController {
         DoctorRequestResponse response = adminService.setRejectOrAccept(doctorReqId, approve);
         return ResponseEntity.ok(response);
     }
-
-
-
 
 }

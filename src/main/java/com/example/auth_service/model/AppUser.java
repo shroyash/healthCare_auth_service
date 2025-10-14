@@ -25,7 +25,7 @@ public class AppUser implements UserDetails {
 
     @NonNull
     @Column(nullable = false, unique = true)
-    private String username;
+        private String username;
 
     @NonNull
     @Column(nullable = false, unique = true)
@@ -65,7 +65,7 @@ public class AppUser implements UserDetails {
     @Override
     @JsonIgnore
     public String getUsername() {
-        return email; // login via email
+        return username;
     }
 
     @Override

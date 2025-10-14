@@ -2,13 +2,16 @@ package com.example.auth_service.service;
 
 import com.example.auth_service.dto.*;
 import com.example.auth_service.model.AppUser;
+import jakarta.servlet.http.HttpServletResponse;
 
 public interface AuthService {
     AppUser registerUser(UserRegistrationRequest request);
     AppUser registerDoctor(DoctorRegistrationRequest request);
     JwtResponse loginUser(LoginRequestDto request);
+    LoginResponseDto loginUserWithCookie(LoginRequestDto request, HttpServletResponse response);
+    void logout(HttpServletResponse response);
     void forgetPassword(ForgotPasswordRequest request);
     boolean verifyResetToken(VerifyResetTokenRequest request);
     void resetPassword(ResetPasswordRequest request);
-    void changePassword(AppUser user,ChangePasswordRequest request);
+    void changePassword(AppUser user, ChangePasswordRequest request);
 }
