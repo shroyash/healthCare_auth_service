@@ -188,20 +188,30 @@ public class AuthServiceImp implements AuthService {
     @Override
     public void forgetPassword(ForgotPasswordRequest request) {
         String email = request.getEmail();
-        AppUser user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        int token = (int)(Math.random() * 900000) + 100000; // 6-digit OTP
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+
+        int token = (int) (Math.random() * 900000) + 100000; // 6-digit OTP
         user.setResetToken(String.valueOf(token));
         user.setTokenExpiry(LocalDateTime.now().plusMinutes(1)); // 1 minute expiry
         userRepository.save(user);
 
-        emailService.sendEmail(
-                user.getEmail(),
-                "Password Reset Code",
-                "Your password reset code is: " + token + ". It expires in 1 minute."
-        );
+        try {
+            emailService.sendEmail(
+                    user.getEmail(),
+                    "Password Reset Code",
+                    "Your password reset code is: " + token + ". It expires in 1 minute."
+            );
+            log.info("Password reset email sent successfully to {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send password reset email to {}. Reason: {}", user.getEmail(), e.getMessage());
+            // Option 1: silently handle (user won't know email failed)
+            // Option 2: throw a custom exception to notify user
+            throw new EmailSendException("Failed to send password reset email. Please try again later.");
+        }
     }
+
 
     @Override
     public boolean verifyResetToken(VerifyResetTokenRequest request) {

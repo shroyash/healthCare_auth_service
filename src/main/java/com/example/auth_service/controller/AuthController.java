@@ -19,7 +19,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register/patient")
-    public ResponseEntity<UserResponseDto> registerPatient(@RequestBody UserRegistrationRequest request) {
+    public ResponseEntity<ApiResponse<UserResponseDto>> registerPatient(@RequestBody UserRegistrationRequest request) {
         AppUser savedUser = authService.registerUser(request);
 
         UserResponseDto response = new UserResponseDto(
@@ -30,69 +30,65 @@ public class AuthController {
                         .collect(Collectors.toSet())
         );
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Patient registered successfully", response));
     }
 
     @PostMapping("/register/doctor")
-    public ResponseEntity<String> registerDoctor(@RequestBody DoctorRegistrationRequest request) {
+    public ResponseEntity<ApiResponse<String>> registerDoctor(@RequestBody DoctorRegistrationRequest request) {
         authService.registerDoctor(request);
-        return ResponseEntity.ok("Your doctor registration request has been sent to admin. Please wait for approval in email.");
+        return ResponseEntity.ok(new ApiResponse<>(true, "Doctor registration request sent", null));
     }
 
-    // Original token-based login (keep for API clients)
     @PostMapping("/login")
-    public ResponseEntity<JwtResponse> loginUser(@RequestBody LoginRequestDto request) {
+    public ResponseEntity<ApiResponse<JwtResponse>> loginUser(@RequestBody LoginRequestDto request) {
         JwtResponse jwtResponse = authService.loginUser(request);
-        return ResponseEntity.ok(jwtResponse);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Login successful", jwtResponse));
     }
 
-    // New cookie-based login for web clients
     @PostMapping("/login-web")
-    public ResponseEntity<LoginResponseDto> loginUserWeb(
+    public ResponseEntity<ApiResponse<LoginResponseDto>> loginUserWeb(
             @RequestBody LoginRequestDto request,
             HttpServletResponse response) {
 
         LoginResponseDto loginResponse = authService.loginUserWithCookie(request, response);
-        return ResponseEntity.ok(loginResponse);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Login successful (web)", loginResponse));
     }
 
-    // Logout endpoint for web clients
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<String>> logout(HttpServletResponse response) {
         authService.logout(response);
-        return ResponseEntity.ok("Logged out successfully");
+        return ResponseEntity.ok(new ApiResponse<>(true, "Logged out successfully", null));
     }
 
     @PostMapping("/forget-password")
-    public ResponseEntity<?> forgetPassword(@RequestBody ForgotPasswordRequest request){
+    public ResponseEntity<ApiResponse<String>> forgetPassword(@RequestBody ForgotPasswordRequest request){
         authService.forgetPassword(request);
-        return ResponseEntity.ok("OTP has been sent to your email successfully");
+        return ResponseEntity.ok(new ApiResponse<>(true, "OTP sent to your email", null));
     }
 
     @PostMapping("/verify-reset-token")
-    public ResponseEntity<?> verifyResetToken(@RequestBody VerifyResetTokenRequest request) {
+    public ResponseEntity<ApiResponse<String>> verifyResetToken(@RequestBody VerifyResetTokenRequest request) {
         boolean isValid = authService.verifyResetToken(request);
 
         if (isValid) {
-            return ResponseEntity.ok("Token is valid");
+            return ResponseEntity.ok(new ApiResponse<>(true, "Token is valid", null));
         } else {
-            return ResponseEntity.status(400).body("Invalid or expired token");
+            return ResponseEntity.badRequest().body(new ApiResponse<>(false, "Invalid or expired token", null));
         }
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<ApiResponse<String>> resetPassword(@RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
-        return ResponseEntity.ok("Password reset successfully");
+        return ResponseEntity.ok(new ApiResponse<>(true, "Password reset successfully", null));
     }
 
     @PutMapping("/users/me/change-password")
-    public ResponseEntity<?> changePassword(
+    public ResponseEntity<ApiResponse<String>> changePassword(
             @RequestBody ChangePasswordRequest request,
             @AuthenticationPrincipal AppUser currentUser
     ) {
-        // currentUser is automatically the logged-in user
         authService.changePassword(currentUser, request);
-        return ResponseEntity.ok("Password changed successfully");
+        return ResponseEntity.ok(new ApiResponse<>(true, "Password changed successfully", null));
     }
 }

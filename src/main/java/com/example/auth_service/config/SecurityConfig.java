@@ -30,18 +30,15 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.corsConfigurationSource = corsConfigurationSource;
-        log.info("=== SecurityConfig constructor called ===");
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        log.info("Creating PasswordEncoder bean");
         return new BCryptPasswordEncoder();
     }
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        log.info("Creating DaoAuthenticationProvider bean");
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
@@ -51,7 +48,6 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        log.info("Creating AuthenticationManager bean");
         return config.getAuthenticationManager();
     }
 
@@ -62,9 +58,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // ✅ no session
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**","/oauth2/**").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/auth/register/**", "/api/auth/login-web", "/oauth2/**").permitAll()
+                        // Remove forget-password from public routes
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .anyRequest().authenticated() // everything else including forget-password needs auth
                 )
                 // register JWT filter before Spring’s UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
