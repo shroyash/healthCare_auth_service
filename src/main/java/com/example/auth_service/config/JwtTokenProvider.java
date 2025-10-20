@@ -1,66 +1,55 @@
 package com.example.auth_service.config;
 
 import com.example.auth_service.model.AppUser;
-import io.jsonwebtoken.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
+@AllArgsConstructor
+@Slf4j
 public class JwtTokenProvider {
-
-    private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
 
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
 
-    private final long jwtExpirationMs = 3600000; // 1 hour
 
-    public JwtTokenProvider(PrivateKey privateKey, PublicKey publicKey) {
-        this.privateKey = privateKey;
-        this.publicKey = publicKey;
-    }
-
-    /** Generate JWT token using RSA private key */
-    public String generateToken(Authentication authentication) {
+    public String generateToken(Authentication authentication, Long userId) {
         AppUser user = (AppUser) authentication.getPrincipal();
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("id", user.getId());
-        claims.put("email", user.getEmail());
-        claims.put("roles", user.getRoles().stream()
-                .map(role -> role.getName())
-                .toList());
+        String username = user.getUsername(); // can be same as email
+        String email = user.getEmail();
+        String roles = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.joining(","));
 
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
+        Date expiryDate = new Date(now.getTime() + 360000000);
 
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(user.getEmail())
+                .setSubject(username)
+                .claim("id", userId)
+                .claim("username",username)
+                .claim("email", email)
+                .claim("roles", roles)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
-                .signWith(privateKey, SignatureAlgorithm.RS256) // ✅ RSA private key
+                .signWith(privateKey, SignatureAlgorithm.RS256)
                 .compact();
     }
 
-    /** Extract username (email) from token */
-    public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(publicKey)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
 
-        return claims.getSubject();
-    }
-
-    /** Validate JWT token using RSA public key with detailed logging */
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()
@@ -68,18 +57,26 @@ public class JwtTokenProvider {
                     .build()
                     .parseClaimsJws(token);
             return true;
-        } catch (ExpiredJwtException ex) {
-            logger.warn("JWT token expired for user {}: {}", ex.getClaims().getSubject(), ex.getMessage());
-        } catch (MalformedJwtException ex) {
-            logger.warn("Invalid JWT token structure: {}", ex.getMessage());
-        } catch (SignatureException ex) {
-            logger.warn("Invalid JWT signature: {}", ex.getMessage());
-        } catch (IllegalArgumentException ex) {
-            logger.warn("JWT token is null or empty: {}", ex.getMessage());
+        } catch (Exception ex) {
+            log.error("JWT validation failed: {}", ex.getMessage());
+            return false;
         }
-        return false;
     }
-    @SuppressWarnings("unchecked")
+
+    public String getUsernameFromToken(String token) {
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(publicKey)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getSubject();
+        } catch (Exception ex) {
+            log.error("Error extracting username from token: {}", ex.getMessage());
+            return null;
+        }
+    }
+
     public Set<String> getRolesFromToken(String token) {
         try {
             Claims claims = Jwts.parserBuilder()
@@ -88,20 +85,18 @@ public class JwtTokenProvider {
                     .parseClaimsJws(token)
                     .getBody();
 
-            Object rolesObj = claims.get("roles");
-            logger.info("Raw roles from token: {}", rolesObj);
-
-            if (rolesObj instanceof List) {
-                Set<String> roles = new HashSet<>((List<String>) rolesObj);
-                logger.info("Parsed roles from token: {}", roles);
-                return roles;
+            String rolesStr = claims.get("roles", String.class);
+            if (rolesStr != null && !rolesStr.isEmpty()) {
+                return Arrays.stream(rolesStr.split(","))
+                        .map(String::trim)
+                        .collect(Collectors.toSet()); // ✅ collect to Set
             }
-
-            logger.warn("No roles found in token or invalid format");
-            return new HashSet<>();
-        } catch (Exception e) {
-            logger.error("Error extracting roles from token: {}", e.getMessage());
-            return new HashSet<>();
+            return Set.of(); // empty set if no roles
+        } catch (Exception ex) {
+            log.error("Error extracting roles from token: {}", ex.getMessage());
+            return Set.of();
         }
     }
+
+
 }

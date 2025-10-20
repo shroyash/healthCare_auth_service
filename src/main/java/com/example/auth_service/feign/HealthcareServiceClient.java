@@ -5,17 +5,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @FeignClient(
-        name = "healthcare-service",
-        url = "http://healthcare-service:8004"
+        name = "healthcare-service"
 )
 public interface HealthcareServiceClient {
 
-    @PostMapping("/docter-profile/create-doctor-profile")
+    @PostMapping("/api/doctor-profiles")
     ResponseEntity<String> createDoctorProfile(
             @RequestHeader("Authorization") String token);
 
-
-    @PostMapping("/patient-profile/create-patience-profile")
+    @PostMapping("/api/patient-profiles")
     ResponseEntity<String> createPatientProfile(
             @RequestHeader("Authorization") String token);
 }

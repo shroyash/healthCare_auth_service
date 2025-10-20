@@ -112,7 +112,7 @@ public class AuthServiceImp implements AuthService {
         AppUser user = (AppUser) authentication.getPrincipal();
 
         // Generate JWT
-        String jwt = jwtTokenProvider.generateToken(authentication);
+        String jwt = jwtTokenProvider.generateToken(authentication,user.getId());
 
         // Return JWT + user info
         return new JwtResponse(
