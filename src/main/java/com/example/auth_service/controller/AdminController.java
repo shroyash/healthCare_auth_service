@@ -2,6 +2,7 @@ package com.example.auth_service.controller;
 
 import com.example.auth_service.dto.*;
 import com.example.auth_service.model.RoleName;
+import com.example.auth_service.repository.DoctorReqRepository;
 import com.example.auth_service.service.AdminService;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +19,7 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final DoctorReqRepository doctorReqRepository;
 
     // List all users (with pagination)
     @GetMapping("/users")
@@ -80,6 +82,11 @@ public class AdminController {
         DoctorRequestResponse response = adminService.setRejectOrAccept(doctorReqId, approve);
         String message = approve ? "Doctor request approved" : "Doctor request rejected";
         return ResponseEntity.ok(new ApiResponse<>(true, message, response));
+    }
+
+    @GetMapping("/pending-doctors-count")
+    public long getTotalDoctorRequest(){
+        return doctorReqRepository.count();
     }
 
 }

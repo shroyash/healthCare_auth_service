@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface DoctorReqRepository extends JpaRepository<DoctorRequest,Long> {
     List<DoctorRequest> findByStatus(DoctorRequestStatus status);
+    long count();
 }

@@ -119,7 +119,8 @@ public class AuthServiceImp implements AuthService {
                 jwt,
                 "Bearer",
                 user.getUsername(),
-                user.getEmail()
+                user.getEmail(),
+                user.getRoles()
         );
     }
 
@@ -136,7 +137,9 @@ public class AuthServiceImp implements AuthService {
         return new LoginResponseDto(
                 "Login successful",
                 jwtResponse.getUsername(),
-                jwtResponse.getEmail()
+                jwtResponse.getEmail(),
+                jwtResponse.getRole()
+
         );
     }
 
