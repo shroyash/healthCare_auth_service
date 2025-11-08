@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -169,13 +170,16 @@ public class AuthServiceImp implements AuthService {
     }
 
     private void setJwtCookie(HttpServletResponse response, String jwt) {
-        Cookie cookie = new Cookie("jwt", jwt);
-        cookie.setHttpOnly(true);           // Prevents XSS attacks
-        cookie.setSecure(false);            // Set to true in production (HTTPS)
-        cookie.setPath("/");                // Available for entire application
-        cookie.setMaxAge(60 * 60);          // 1 hour expiration
+        ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
+                .httpOnly(true)
+                .secure(false)  // false for localhost, true for production
+                .path("/")
+                .maxAge(60 * 60)
+                .sameSite("Lax")
+                .domain("localhost")  // Add this for localhost
+                .build();
 
-        response.addCookie(cookie);
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 
     private void clearJwtCookie(HttpServletResponse response) {

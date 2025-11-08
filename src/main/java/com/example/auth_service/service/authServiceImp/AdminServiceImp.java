@@ -86,14 +86,16 @@ public class AdminServiceImp implements AdminService {
     // Get all doctor requests
     @Override
     public List<DoctorRequestDto> getAllDoctorRequests() {
-        return doctorReqRepository.findAll()
+        return doctorReqRepository.findAllWithUser()
                 .stream()
                 .map(dr -> DoctorRequestDto.builder()
+                        .doctorReqId(dr.getDoctorReqId())
+                        .userName(dr.getUser().getUsername())
+                        .email(dr.getUser().getEmail())
                         .doctorLicence(dr.getDoctorLicence())
                         .status(dr.getStatus())
                         .build())
                 .toList();
-
     }
 
 
@@ -101,7 +103,7 @@ public class AdminServiceImp implements AdminService {
     // get only pending requests
     @Override
     public List<DoctorRequestDto> getPendingDoctorRequests() {
-        return doctorReqRepository.findByStatus(DoctorRequestStatus.PENDING)
+        return doctorReqRepository.findByStatusWithUser(DoctorRequestStatus.PENDING)
                 .stream()
                 .map(dr -> DoctorRequestDto.builder()
                         .doctorReqId(dr.getDoctorReqId())

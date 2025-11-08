@@ -1,6 +1,7 @@
 package com.example.auth_service.controller;
 
 import com.example.auth_service.dto.*;
+import com.example.auth_service.model.DoctorRequestStatus;
 import com.example.auth_service.model.RoleName;
 import com.example.auth_service.repository.DoctorReqRepository;
 import com.example.auth_service.service.AdminService;
@@ -11,7 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -85,8 +88,10 @@ public class AdminController {
     }
 
     @GetMapping("/pending-doctors-count")
-    public long getTotalDoctorRequest(){
-        return doctorReqRepository.count();
+    public ResponseEntity<ApiResponse<Integer>> getTotalDoctorRequest() {
+        long count = doctorReqRepository.countByStatus(DoctorRequestStatus.PENDING);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Pending doctor requests count", (int) count));
     }
 
 }
+
