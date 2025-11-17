@@ -29,6 +29,6 @@ public interface AdminService {
 
     List<DoctorRequestDto> getAllDoctorRequests();
 
-    DoctorRequestResponse setRejectOrAccept(Long doctorReqId, boolean approve);
+    DoctorRequestResponse setRejectOrAccept(String token, Long doctorReqId, boolean approve);
 
 }

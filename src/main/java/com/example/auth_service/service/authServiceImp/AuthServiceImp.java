@@ -10,24 +10,28 @@ import com.example.auth_service.repository.RoleRepository;
 import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.service.AuthService;
 import com.example.auth_service.service.EmailService;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
-@AllArgsConstructor
 @Service
 @Slf4j
 public class AuthServiceImp implements AuthService {
@@ -41,19 +45,50 @@ public class AuthServiceImp implements AuthService {
     private final EmailService emailService;
     private final HealthcareServiceClient healthcareServiceClient;
 
+    @Value("${upload.path:uploads/documents/}")
+    private String uploadDir;
+
+    public AuthServiceImp(UserRepository userRepository,
+                          DoctorReqRepository doctorReqRepository,
+                          RoleRepository roleRepository,
+                          PasswordEncoder passwordEncoder,
+                          AuthenticationManager authenticationManager,
+                          JwtTokenProvider jwtTokenProvider,
+                          EmailService emailService,
+                          HealthcareServiceClient healthcareServiceClient) {
+        this.userRepository = userRepository;
+        this.doctorReqRepository = doctorReqRepository;
+        this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.emailService = emailService;
+        this.healthcareServiceClient = healthcareServiceClient;
+    }
+
+    @PostConstruct
+    public void init() {
+        try {
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+        } catch (IOException e) {
+            log.error("Failed to create upload directory: {}", e.getMessage());
+        }
+    }
+
     @Override
     public AppUser registerUser(UserRegistrationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
         }
 
-        // Create new user
         AppUser user = new AppUser();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        // Assign default role PATIENT
         if(request.getEmail().equals("admins@gmail.com")){
             Role adminRole = roleRepository.findByName(RoleName.ROLE_ADMIN)
                     .orElseThrow(() -> new RoleNotFoundExpection("Admin role not found"));
@@ -79,12 +114,13 @@ public class AuthServiceImp implements AuthService {
             throw new UserAlreadyExistsException("Email already in use");
         }
 
+        String licenseUrl = saveLicenseFile(request.getLicense());
+
         AppUser user = new AppUser();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        // Assign default role
         Role doctorRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
                 .orElseThrow(() -> new RoleNotFoundExpection("default role not found"));
 
@@ -93,7 +129,7 @@ public class AuthServiceImp implements AuthService {
         AppUser savedUser = userRepository.save(user);
 
         DoctorRequest doctorRequest = DoctorRequest.builder()
-                .doctorLicence(request.getLicense())
+                .doctorLicence(licenseUrl)
                 .status(DoctorRequestStatus.PENDING)
                 .user(savedUser)
                 .build();
@@ -102,20 +138,38 @@ public class AuthServiceImp implements AuthService {
         return savedUser;
     }
 
+    private String saveLicenseFile(MultipartFile file) {
+        try {
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+                log.info("Created upload directory: {}", uploadPath.toAbsolutePath());
+            }
+
+            String filename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            Path filePath = uploadPath.resolve(filename);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+
+            return "/uploads/documents/" + filename;
+        } catch (IOException e) {
+            log.error("Failed to store license file: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to store license file", e);
+        }
+    }
+
     @Override
     public JwtResponse loginUser(LoginRequestDto request) {
-        // Authenticate user
+        AppUser userInfo = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UserNotFoundException("Email does not exist"));
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
-        // Get authenticated user
         AppUser user = (AppUser) authentication.getPrincipal();
+        String jwt = jwtTokenProvider.generateToken(authentication, user.getId());
 
-        // Generate JWT
-        String jwt = jwtTokenProvider.generateToken(authentication,user.getId());
-
-        // Return JWT + user info
         return new JwtResponse(
                 jwt,
                 "Bearer",
@@ -127,23 +181,19 @@ public class AuthServiceImp implements AuthService {
 
     @Override
     public LoginResponseDto loginUserWithCookie(LoginRequestDto request, HttpServletResponse response) {
-
         JwtResponse jwtResponse = loginUser(request);
-
         Set<String> roleList = jwtTokenProvider.getRolesFromToken(jwtResponse.getToken());
 
         setJwtCookie(response, jwtResponse.getToken());
-        createHealthcareProfile(jwtResponse.getToken(),roleList);
+        createHealthcareProfile(jwtResponse.getToken(), roleList);
 
         return new LoginResponseDto(
                 "Login successful",
                 jwtResponse.getUsername(),
                 jwtResponse.getEmail(),
                 jwtResponse.getRole()
-
         );
     }
-
 
     public void createHealthcareProfile(String token, Set<String> roleList) {
         try {
@@ -156,27 +206,23 @@ public class AuthServiceImp implements AuthService {
             } else {
                 healthcareServiceClient.createPatientProfile(token);
             }
-
         } catch (Exception e) {
             log.error("Failed to create healthcare profile for user: {}", e.getMessage());
         }
     }
 
-
     @Override
     public void logout(HttpServletResponse response) {
-        // Clear the JWT cookie
         clearJwtCookie(response);
     }
 
     private void setJwtCookie(HttpServletResponse response, String jwt) {
         ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
                 .httpOnly(true)
-                .secure(false)  // false for localhost, true for production
+                .secure(false)
                 .path("/")
                 .maxAge(60 * 60)
                 .sameSite("Lax")
-                .domain("localhost")  // Add this for localhost
                 .build();
 
         response.addHeader("Set-Cookie", cookie.toString());
@@ -185,9 +231,9 @@ public class AuthServiceImp implements AuthService {
     private void clearJwtCookie(HttpServletResponse response) {
         Cookie cookie = new Cookie("jwt", "");
         cookie.setHttpOnly(true);
-        cookie.setSecure(false);            // Match the same settings as setJwtCookie
+        cookie.setSecure(false);
         cookie.setPath("/");
-        cookie.setMaxAge(0);                // Expire immediately
+        cookie.setMaxAge(0);
 
         response.addCookie(cookie);
     }
@@ -199,26 +245,23 @@ public class AuthServiceImp implements AuthService {
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
 
-        int token = (int) (Math.random() * 900000) + 100000; // 6-digit OTP
+        int token = (int) (Math.random() * 900000) + 100000;
         user.setResetToken(String.valueOf(token));
-        user.setTokenExpiry(LocalDateTime.now().plusMinutes(1)); // 1 minute expiry
+        user.setTokenExpiry(LocalDateTime.now().plusMinutes(1));
         userRepository.save(user);
 
         try {
-            emailService.sendEmail(
+            emailService.sendSimpleEmail(
                     user.getEmail(),
                     "Password Reset Code",
                     "Your password reset code is: " + token + ". It expires in 1 minute."
             );
-            log.info("Password reset email sent successfully to {}", user.getEmail());
+
         } catch (Exception e) {
             log.error("Failed to send password reset email to {}. Reason: {}", user.getEmail(), e.getMessage());
-            // Option 1: silently handle (user won't know email failed)
-            // Option 2: throw a custom exception to notify user
             throw new EmailSendException("Failed to send password reset email. Please try again later.");
         }
     }
-
 
     @Override
     public boolean verifyResetToken(VerifyResetTokenRequest request) {
@@ -252,8 +295,6 @@ public class AuthServiceImp implements AuthService {
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-
-        // Clear token so it can't be reused
         user.setResetToken(null);
         user.setTokenExpiry(null);
 

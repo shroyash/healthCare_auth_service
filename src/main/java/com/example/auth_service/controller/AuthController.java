@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.stream.Collectors;
 
@@ -34,10 +35,24 @@ public class AuthController {
     }
 
     @PostMapping("/register/doctor")
-    public ResponseEntity<ApiResponse<String>> registerDoctor(@RequestBody DoctorRegistrationRequest request) {
+    public ResponseEntity<ApiResponse<String>> registerDoctor(
+            @RequestParam("username") String username,
+            @RequestParam("email") String email,
+            @RequestParam("password") String password,
+            @RequestParam("license") MultipartFile license
+    ) {
+        DoctorRegistrationRequest request = DoctorRegistrationRequest.builder()
+                .username(username)
+                .email(email)
+                .password(password)
+                .license(license)
+                .build();
+
         authService.registerDoctor(request);
+
         return ResponseEntity.ok(new ApiResponse<>(true, "Doctor registration request sent", null));
     }
+
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<JwtResponse>> loginUser(@RequestBody LoginRequestDto request) {

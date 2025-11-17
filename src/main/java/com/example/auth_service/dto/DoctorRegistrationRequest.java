@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 @AllArgsConstructor
@@ -14,9 +15,7 @@ public class DoctorRegistrationRequest {
         private String username;
         private String email;
         private String password;
-
-        @JsonProperty("license")
-        private String license;
+        private MultipartFile license;
 }
 
 

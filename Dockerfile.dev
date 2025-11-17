@@ -1,16 +1,13 @@
-# Dockerfile.dev
+FROM maven:3.9.6-eclipse-temurin-21
 
-# Base image with Maven + JDK
-FROM maven:3.9.4-eclipse-temurin-21
-
-# Set working directory
 WORKDIR /app
 
-# Copy your source code
+# Copy only pom.xml first to cache dependencies
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Copy source code
 COPY . .
 
-# Expose the port
-EXPOSE 8003
-
-# Run Spring Boot directly from source
+# Run Spring Boot in dev mode with hot reload
 CMD ["mvn", "spring-boot:run"]

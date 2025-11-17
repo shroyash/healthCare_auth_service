@@ -79,10 +79,11 @@ public class AdminController {
     @PostMapping("/doctor-req/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<DoctorRequestResponse>> approveOrRejectDoctor(
+            @CookieValue("jwt") String token,
             @RequestParam Long doctorReqId,
             @RequestParam boolean approve
     ) {
-        DoctorRequestResponse response = adminService.setRejectOrAccept(doctorReqId, approve);
+        DoctorRequestResponse response = adminService.setRejectOrAccept(token,doctorReqId, approve);
         String message = approve ? "Doctor request approved" : "Doctor request rejected";
         return ResponseEntity.ok(new ApiResponse<>(true, message, response));
     }

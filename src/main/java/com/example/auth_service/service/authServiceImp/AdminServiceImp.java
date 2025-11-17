@@ -3,6 +3,7 @@ package com.example.auth_service.service.authServiceImp;
 import com.example.auth_service.dto.DoctorRequestDto;
 import com.example.auth_service.dto.DoctorRequestResponse;
 import com.example.auth_service.dto.UserResponseDto;
+import com.example.auth_service.feign.HealthcareServiceClient;
 import com.example.auth_service.globalExpection.RoleNotFoundExpection;
 import com.example.auth_service.globalExpection.UserNotFoundException;
 import com.example.auth_service.model.*;
@@ -28,6 +29,7 @@ public class AdminServiceImp implements AdminService {
     private final RoleRepository roleRepository;
     private final DoctorReqRepository doctorReqRepository;
     private final EmailService emailService;
+    private final HealthcareServiceClient healthcareServiceClient;
 
     @Override
     public Page<UserResponseDto> getAllUsers(Pageable pageable) {
@@ -117,7 +119,7 @@ public class AdminServiceImp implements AdminService {
 
 
     @Override
-    public DoctorRequestResponse setRejectOrAccept(Long doctorReqId, boolean approve) {
+    public DoctorRequestResponse setRejectOrAccept(String token, Long doctorReqId, boolean approve) {
         DoctorRequest request = doctorReqRepository.findById(doctorReqId)
                 .orElseThrow(() -> new RuntimeException("Doctor request not found"));
 
@@ -136,12 +138,14 @@ public class AdminServiceImp implements AdminService {
 
             doctorReqRepository.save(request);
             userRepository.save(user);
+            healthcareServiceClient.createDoctorProfile(token);
 
-//            emailService.sendEmail(
-//                    user.getEmail(),
-//                    "Doctor Account Approved",
-//                    "Congratulations! Your doctor registration has been approved. You can now log in and access your doctor dashboard."
-//            );
+            emailService.sendSimpleEmail(
+                    user.getEmail(),
+                    "Doctor Account Approved",
+                    "Congratulations! Your doctor registration has been approved. You can now log in and access your doctor dashboard."
+            );
+
 
             return DoctorRequestResponse.builder()
                     .doctorReqId(request.getDoctorReqId())
