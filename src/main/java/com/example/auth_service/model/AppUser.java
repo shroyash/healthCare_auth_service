@@ -25,7 +25,7 @@ public class AppUser implements UserDetails {
 
     @NonNull
     @Column(nullable = false, unique = true)
-        private String username;
+    private String username;
 
     @NonNull
     @Column(nullable = false, unique = true)
@@ -48,8 +48,21 @@ public class AppUser implements UserDetails {
     )
     private Set<Role> roles = new HashSet<>();
 
+
     private String resetToken;
+
     private LocalDateTime tokenExpiry;
+
+
+    @Column(nullable = false)
+    private int failedAttempts = 0;
+
+    @Column(nullable = false)
+    private boolean accountLocked = false;
+
+    private LocalDateTime lockTime;
+
+
 
     @Override
     @JsonIgnore
@@ -64,20 +77,15 @@ public class AppUser implements UserDetails {
 
     @Override
     @JsonIgnore
-    public String getUsername() {
-        return username;
-    }
-
-    @Override
-    @JsonIgnore
     public boolean isAccountNonExpired() {
         return true;
     }
 
+
     @Override
     @JsonIgnore
     public boolean isAccountNonLocked() {
-        return true;
+        return !this.accountLocked;
     }
 
     @Override

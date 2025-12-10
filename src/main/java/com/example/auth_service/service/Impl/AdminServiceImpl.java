@@ -1,4 +1,4 @@
-package com.example.auth_service.service.authServiceImp;
+package com.example.auth_service.service.Impl;
 
 import com.example.auth_service.dto.DoctorRequestDto;
 import com.example.auth_service.dto.DoctorRequestResponse;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
-public class AdminServiceImp implements AdminService {
+public class AdminServiceImpl implements AdminService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;

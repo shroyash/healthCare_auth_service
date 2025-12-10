@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 @Table(name = "docteRequest")
+
 public class DoctorRequest {
 
     @Id

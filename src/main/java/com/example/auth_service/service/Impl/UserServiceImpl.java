@@ -1,4 +1,4 @@
-package com.example.auth_service.service.authServiceImp;
+package com.example.auth_service.service.Impl;
 
 import com.example.auth_service.dto.UserResponseDto;
 import com.example.auth_service.model.AppUser;
@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
-public class UserServiceImp implements UserService {
+public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 

@@ -1,4 +1,4 @@
-package com.example.auth_service.service.authServiceImp;
+package com.example.auth_service.service.Impl;
 
 import com.example.auth_service.config.JwtTokenProvider;
 import com.example.auth_service.dto.*;
@@ -10,6 +10,7 @@ import com.example.auth_service.repository.RoleRepository;
 import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.service.AuthService;
 import com.example.auth_service.service.EmailService;
+import com.example.auth_service.service.LoginAttemptService;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,7 +35,7 @@ import java.util.Set;
 
 @Service
 @Slf4j
-public class AuthServiceImp implements AuthService {
+public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final DoctorReqRepository doctorReqRepository;
@@ -44,18 +45,19 @@ public class AuthServiceImp implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
     private final HealthcareServiceClient healthcareServiceClient;
+    private final LoginAttemptService loginAttemptService;
 
     @Value("${upload.path:uploads/documents/}")
     private String uploadDir;
 
-    public AuthServiceImp(UserRepository userRepository,
-                          DoctorReqRepository doctorReqRepository,
-                          RoleRepository roleRepository,
-                          PasswordEncoder passwordEncoder,
-                          AuthenticationManager authenticationManager,
-                          JwtTokenProvider jwtTokenProvider,
-                          EmailService emailService,
-                          HealthcareServiceClient healthcareServiceClient) {
+    public AuthServiceImpl(UserRepository userRepository,
+                           DoctorReqRepository doctorReqRepository,
+                           RoleRepository roleRepository,
+                           PasswordEncoder passwordEncoder,
+                           AuthenticationManager authenticationManager,
+                           JwtTokenProvider jwtTokenProvider,
+                           EmailService emailService,
+                           HealthcareServiceClient healthcareServiceClient, LoginAttemptService loginAttemptService) {
         this.userRepository = userRepository;
         this.doctorReqRepository = doctorReqRepository;
         this.roleRepository = roleRepository;
@@ -64,6 +66,7 @@ public class AuthServiceImp implements AuthService {
         this.jwtTokenProvider = jwtTokenProvider;
         this.emailService = emailService;
         this.healthcareServiceClient = healthcareServiceClient;
+        this.loginAttemptService = loginAttemptService;
     }
 
     @PostConstruct
@@ -82,6 +85,10 @@ public class AuthServiceImp implements AuthService {
     public AppUser registerUser(UserRegistrationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
+        }
+
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new UserAlreadyExistsException("UserName already in use");
         }
 
         AppUser user = new AppUser();
@@ -112,6 +119,10 @@ public class AuthServiceImp implements AuthService {
     public AppUser registerDoctor(DoctorRegistrationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
+        }
+
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new UserAlreadyExistsException("UserName already in use");
         }
 
         String licenseUrl = saveLicenseFile(request.getLicense());
@@ -160,24 +171,40 @@ public class AuthServiceImp implements AuthService {
 
     @Override
     public JwtResponse loginUser(LoginRequestDto request) {
+
         AppUser userInfo = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException("Email does not exist"));
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
 
-        AppUser user = (AppUser) authentication.getPrincipal();
-        String jwt = jwtTokenProvider.generateToken(authentication, user.getId());
+        if (loginAttemptService.isAccountLocked(userInfo)) {
+            throw new RuntimeException("Account is locked due to multiple failed login attempts. Try again later.");
+        }
 
-        return new JwtResponse(
-                jwt,
-                "Bearer",
-                user.getUsername(),
-                user.getEmail(),
-                user.getRoles()
-        );
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+
+            AppUser user = (AppUser) authentication.getPrincipal();
+
+            loginAttemptService.loginSucceeded(user);
+
+            String jwt = jwtTokenProvider.generateToken(authentication, user.getId());
+
+            return new JwtResponse(
+                    jwt,
+                    "Bearer",
+                    user.getUsername(),
+                    user.getEmail(),
+                    user.getRoles()
+            );
+
+        } catch (Exception ex) {
+            loginAttemptService.loginFailed(userInfo);
+            throw new RuntimeException("Invalid credentials");
+        }
     }
+
 
     @Override
     public LoginResponseDto loginUserWithCookie(LoginRequestDto request, HttpServletResponse response) {

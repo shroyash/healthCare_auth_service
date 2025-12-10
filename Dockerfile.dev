@@ -1,13 +1,20 @@
+# Base image with Maven + JDK
 FROM maven:3.9.6-eclipse-temurin-21
 
+# Set working directory
 WORKDIR /app
 
 # Copy only pom.xml first to cache dependencies
 COPY pom.xml .
+
+# Pre-download dependencies to speed up rebuilds
 RUN mvn dependency:go-offline -B
 
-# Copy source code
+# Copy full source code
 COPY . .
 
-# Run Spring Boot in dev mode with hot reload
-CMD ["mvn", "spring-boot:run"]
+# Expose ports for Spring Boot app and debugger
+EXPOSE 8003 5005
+
+# Run Spring Boot in dev mode with hot reload and remote debugging
+CMD ["mvn", "spring-boot:run", "-Dspring-boot.run.fork=false", "-Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"]

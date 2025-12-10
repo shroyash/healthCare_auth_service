@@ -53,7 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             new UsernamePasswordAuthenticationToken(username, null, authorities);
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    log.debug("✅ JWT Token validated for user: {}", username);
+                    log.debug("JWT Token validated for user: {}", username);
                 }
 
             }
