@@ -208,6 +208,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponseDto loginUserWithCookie(LoginRequestDto request, HttpServletResponse response) {
+
+
         JwtResponse jwtResponse = loginUser(request);
         Set<String> roleList = jwtTokenProvider.getRolesFromToken(jwtResponse.getToken());
 
@@ -246,10 +248,10 @@ public class AuthServiceImpl implements AuthService {
     private void setJwtCookie(HttpServletResponse response, String jwt) {
         ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .path("/")
                 .maxAge(60 * 60)
-                .sameSite("Lax")
+                .sameSite("None")
                 .build();
 
         response.addHeader("Set-Cookie", cookie.toString());
