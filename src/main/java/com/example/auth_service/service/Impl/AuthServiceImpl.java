@@ -2,7 +2,6 @@ package com.example.auth_service.service.Impl;
 
 import com.example.auth_service.config.JwtTokenProvider;
 import com.example.auth_service.dto.*;
-import com.example.auth_service.feign.HealthcareServiceClient;
 import com.example.auth_service.globalExpection.*;
 import com.example.auth_service.model.*;
 import com.example.auth_service.repository.DoctorReqRepository;
@@ -17,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -44,8 +44,9 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
-    private final HealthcareServiceClient healthcareServiceClient;
     private final LoginAttemptService loginAttemptService;
+    private final KafkaTemplate<String, UserRegisteredEvent> kafkaTemplate;
+
 
     @Value("${upload.path:uploads/documents/}")
     private String uploadDir;
@@ -57,7 +58,8 @@ public class AuthServiceImpl implements AuthService {
                            AuthenticationManager authenticationManager,
                            JwtTokenProvider jwtTokenProvider,
                            EmailService emailService,
-                           HealthcareServiceClient healthcareServiceClient, LoginAttemptService loginAttemptService) {
+                           LoginAttemptService loginAttemptService,
+                           KafkaTemplate<String, UserRegisteredEvent> kafkaTemplate) {
         this.userRepository = userRepository;
         this.doctorReqRepository = doctorReqRepository;
         this.roleRepository = roleRepository;
@@ -65,8 +67,8 @@ public class AuthServiceImpl implements AuthService {
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.emailService = emailService;
-        this.healthcareServiceClient = healthcareServiceClient;
         this.loginAttemptService = loginAttemptService;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @PostConstruct
@@ -86,9 +88,8 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
         }
-
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new UserAlreadyExistsException("UserName already in use");
+            throw new UserAlreadyExistsException("Username already in use");
         }
 
         AppUser user = new AppUser();
@@ -99,32 +100,38 @@ public class AuthServiceImpl implements AuthService {
         if(request.getEmail().equals("admins@gmail.com")){
             Role adminRole = roleRepository.findByName(RoleName.ROLE_ADMIN)
                     .orElseThrow(() -> new RoleNotFoundExpection("Admin role not found"));
-
-            Set<Role> roles = new HashSet<>();
-            roles.add(adminRole);
-            user.setRoles(roles);
+            user.setRoles(Set.of(adminRole));
         } else {
             Role patientRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
                     .orElseThrow(() -> new RoleNotFoundExpection("Default role not found"));
-
-            Set<Role> roles = new HashSet<>();
-            roles.add(patientRole);
-            user.setRoles(roles);
+            user.setRoles(Set.of(patientRole));
         }
 
-        return userRepository.save(user);
+        AppUser savedUser = userRepository.save(user);
+
+        // Publish Kafka event (UUID → String)
+        UserRegisteredEvent event = new UserRegisteredEvent(
+                savedUser.getId().toString(),
+                savedUser.getEmail(),
+                savedUser.getUsername(),
+                null // no license for normal users
+        );
+        kafkaTemplate.send("user-registered", event.getUserId(), event);
+
+        return savedUser;
     }
+
 
     @Override
     public AppUser registerDoctor(DoctorRegistrationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
         }
-
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new UserAlreadyExistsException("UserName already in use");
+            throw new UserAlreadyExistsException("Username already in use");
         }
 
+        // Save license file and get URL
         String licenseUrl = saveLicenseFile(request.getLicense());
 
         AppUser user = new AppUser();
@@ -132,22 +139,22 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        Role doctorRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
-                .orElseThrow(() -> new RoleNotFoundExpection("default role not found"));
-
+        Role doctorRole = roleRepository.findByName(RoleName.ROLE_DOCTOR)
+                .orElseThrow(() -> new RoleNotFoundExpection("Doctor role not found"));
         user.setRoles(Set.of(doctorRole));
 
         AppUser savedUser = userRepository.save(user);
 
+        // Save doctor request entity
         DoctorRequest doctorRequest = DoctorRequest.builder()
                 .doctorLicence(licenseUrl)
                 .status(DoctorRequestStatus.PENDING)
                 .user(savedUser)
                 .build();
-
         doctorReqRepository.save(doctorRequest);
         return savedUser;
     }
+
 
     private String saveLicenseFile(MultipartFile file) {
         try {
@@ -214,7 +221,6 @@ public class AuthServiceImpl implements AuthService {
         Set<String> roleList = jwtTokenProvider.getRolesFromToken(jwtResponse.getToken());
 
         setJwtCookie(response, jwtResponse.getToken());
-        createHealthcareProfile(jwtResponse.getToken(), roleList);
 
         return new LoginResponseDto(
                 "Login successful",
@@ -224,21 +230,7 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
-    public void createHealthcareProfile(String token, Set<String> roleList) {
-        try {
-            boolean isDoctor = roleList.stream()
-                    .anyMatch(role -> role.equalsIgnoreCase("ROLE_DOCTOR") || role.equalsIgnoreCase("DOCTOR_ROLE"));
 
-            if (isDoctor) {
-                healthcareServiceClient.createDoctorProfile(token);
-                log.info("Doctor profile creation request sent successfully.");
-            } else {
-                healthcareServiceClient.createPatientProfile(token);
-            }
-        } catch (Exception e) {
-            log.error("Failed to create healthcare profile for user: {}", e.getMessage());
-        }
-    }
 
     @Override
     public void logout(HttpServletResponse response) {

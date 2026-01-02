@@ -15,6 +15,7 @@ import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -26,7 +27,7 @@ public class JwtTokenProvider {
     private final PublicKey publicKey;
 
 
-    public String generateToken(Authentication authentication, Long userId) {
+    public String generateToken(Authentication authentication, UUID userId) {
         AppUser user = (AppUser) authentication.getPrincipal();
         String username = user.getUsername(); // can be same as email
         String email = user.getEmail();

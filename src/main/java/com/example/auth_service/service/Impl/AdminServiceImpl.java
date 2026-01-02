@@ -2,8 +2,8 @@ package com.example.auth_service.service.Impl;
 
 import com.example.auth_service.dto.DoctorRequestDto;
 import com.example.auth_service.dto.DoctorRequestResponse;
+import com.example.auth_service.dto.UserRegisteredEvent;
 import com.example.auth_service.dto.UserResponseDto;
-import com.example.auth_service.feign.HealthcareServiceClient;
 import com.example.auth_service.globalExpection.RoleNotFoundExpection;
 import com.example.auth_service.globalExpection.UserNotFoundException;
 import com.example.auth_service.model.*;
@@ -15,10 +15,12 @@ import com.example.auth_service.service.EmailService;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,7 +31,7 @@ public class AdminServiceImpl implements AdminService {
     private final RoleRepository roleRepository;
     private final DoctorReqRepository doctorReqRepository;
     private final EmailService emailService;
-    private final HealthcareServiceClient healthcareServiceClient;
+    private final KafkaTemplate kafkaTemplate;
 
     @Override
     public Page<UserResponseDto> getAllUsers(Pageable pageable) {
@@ -44,7 +46,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public UserResponseDto getUserById(Long id) {
+    public UserResponseDto getUserById(UUID id) {
         AppUser user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         return new UserResponseDto(
@@ -57,14 +59,14 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public void deleteUser(Long id) {
+    public void deleteUser(UUID id) {
         AppUser user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         userRepository.delete(user);
     }
 
     @Override
-    public UserResponseDto changeUserRole(Long userId, RoleName newRole) {
+    public UserResponseDto changeUserRole(UUID userId, RoleName newRole) {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
@@ -100,26 +102,8 @@ public class AdminServiceImpl implements AdminService {
                 .toList();
     }
 
-
-
-    // get only pending requests
     @Override
-    public List<DoctorRequestDto> getPendingDoctorRequests() {
-        return doctorReqRepository.findByStatusWithUser(DoctorRequestStatus.PENDING)
-                .stream()
-                .map(dr -> DoctorRequestDto.builder()
-                        .doctorReqId(dr.getDoctorReqId())
-                        .userName(dr.getUser().getUsername())
-                        .email(dr.getUser().getEmail())
-                        .doctorLicence(dr.getDoctorLicence())
-                        .status(dr.getStatus())
-                        .build())
-                .toList();
-    }
-
-
-    @Override
-    public DoctorRequestResponse setRejectOrAccept(String token, Long doctorReqId, boolean approve) {
+    public DoctorRequestResponse setRejectOrAccept(String token, long doctorReqId, boolean approve) {
         DoctorRequest request = doctorReqRepository.findById(doctorReqId)
                 .orElseThrow(() -> new RuntimeException("Doctor request not found"));
 
@@ -138,7 +122,14 @@ public class AdminServiceImpl implements AdminService {
 
             doctorReqRepository.save(request);
             userRepository.save(user);
-            healthcareServiceClient.createDoctorProfile(token);
+
+
+            UserRegisteredEvent event = new UserRegisteredEvent(
+                    user.getId().toString(),
+                    user.getEmail(),
+                    user.getUsername()
+            );
+            kafkaTemplate.send("user-registered", event.getUserId(), event);
 
             emailService.sendSimpleEmail(
                     user.getEmail(),
@@ -172,4 +163,19 @@ public class AdminServiceImpl implements AdminService {
         }
     }
 
+
+    // get only pending requests
+    @Override
+    public List<DoctorRequestDto> getPendingDoctorRequests() {
+        return doctorReqRepository.findByStatusWithUser(DoctorRequestStatus.PENDING)
+                .stream()
+                .map(dr -> DoctorRequestDto.builder()
+                        .doctorReqId(dr.getDoctorReqId())
+                        .userName(dr.getUser().getUsername())
+                        .email(dr.getUser().getEmail())
+                        .doctorLicence(dr.getDoctorLicence())
+                        .status(dr.getStatus())
+                        .build())
+                .toList();
+    }
 }

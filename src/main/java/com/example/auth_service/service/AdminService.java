@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface AdminService {
 
@@ -17,18 +18,18 @@ public interface AdminService {
     Page<UserResponseDto> getAllUsers(Pageable pageable);
 
     // Get a specific user by ID
-    UserResponseDto getUserById(Long id);
+    UserResponseDto getUserById(UUID id);
 
     // Delete or deactivate a user
-    void deleteUser(Long id);
+    void deleteUser(UUID id);
 
     // Change user role
-    UserResponseDto changeUserRole(Long userId, RoleName newRole);
+    UserResponseDto changeUserRole(UUID userId, RoleName newRole);
 
     List<DoctorRequestDto> getPendingDoctorRequests();
 
     List<DoctorRequestDto> getAllDoctorRequests();
 
-    DoctorRequestResponse setRejectOrAccept(String token, Long doctorReqId, boolean approve);
+    DoctorRequestResponse setRejectOrAccept(String token, long doctorReqId, boolean approve);
 
 }

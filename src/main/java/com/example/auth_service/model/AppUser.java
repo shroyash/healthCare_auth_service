@@ -20,8 +20,13 @@ import java.util.stream.Collectors;
 public class AppUser implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(generator = "UUID")
+    @org.hibernate.annotations.GenericGenerator(
+            name = "UUID",
+            strategy = "org.hibernate.id.UUIDGenerator"
+    )
+    @Column(updatable = false, nullable = false)
+    private UUID id;
 
     @NonNull
     @Column(nullable = false, unique = true)

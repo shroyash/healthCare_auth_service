@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -35,15 +36,16 @@ public class AdminController {
     // Get user by ID
     @GetMapping("/users/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<UserResponseDto>> getUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponseDto>> getUserById(@PathVariable UUID id) {
         UserResponseDto user = adminService.getUserById(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "User fetched successfully", user));
     }
 
+
     // Delete a user
     @DeleteMapping("/users/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
         adminService.deleteUser(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "User deleted successfully", null));
     }
@@ -52,7 +54,7 @@ public class AdminController {
     @PutMapping("/users/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserResponseDto>> changeUserRole(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam RoleName newRole
     ) {
         UserResponseDto updatedUser = adminService.changeUserRole(id, newRole);
