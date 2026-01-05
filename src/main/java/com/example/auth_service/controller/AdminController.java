@@ -11,10 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -25,7 +22,6 @@ public class AdminController {
     private final AdminService adminService;
     private final DoctorReqRepository doctorReqRepository;
 
-    // List all users (with pagination)
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<UserResponseDto>>> getAllUsers(Pageable pageable) {
@@ -33,7 +29,7 @@ public class AdminController {
         return ResponseEntity.ok(new ApiResponse<>(true, "All users fetched successfully", users));
     }
 
-    // Get user by ID
+
     @GetMapping("/users/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserResponseDto>> getUserById(@PathVariable UUID id) {
@@ -42,7 +38,6 @@ public class AdminController {
     }
 
 
-    // Delete a user
     @DeleteMapping("/users/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
@@ -50,7 +45,6 @@ public class AdminController {
         return ResponseEntity.ok(new ApiResponse<>(true, "User deleted successfully", null));
     }
 
-    // Change user role
     @PutMapping("/users/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserResponseDto>> changeUserRole(
@@ -61,7 +55,7 @@ public class AdminController {
         return ResponseEntity.ok(new ApiResponse<>(true, "User role updated successfully", updatedUser));
     }
 
-    // Get all doctor requests
+
     @GetMapping("/doctor-req/all")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<DoctorRequestDto>>> getAll() {
@@ -69,7 +63,7 @@ public class AdminController {
         return ResponseEntity.ok(new ApiResponse<>(true, "All doctor requests fetched", requests));
     }
 
-    // Get only pending doctor requests
+
     @GetMapping("/doctor-req/pending")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<DoctorRequestDto>>> getPending() {
@@ -77,7 +71,7 @@ public class AdminController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Pending doctor requests fetched", pending));
     }
 
-    // Approve or reject doctor
+
     @PostMapping("/doctor-req/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<DoctorRequestResponse>> approveOrRejectDoctor(

@@ -14,6 +14,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -45,8 +46,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
     private final LoginAttemptService loginAttemptService;
-    private final KafkaTemplate<String, UserRegisteredEvent> kafkaTemplate;
 
+    @Qualifier("userKafkaTemplate")
+    private final KafkaTemplate<String, UserRegisteredEvent> kafkaTemplate;
 
     @Value("${upload.path:uploads/documents/}")
     private String uploadDir;
@@ -59,7 +61,9 @@ public class AuthServiceImpl implements AuthService {
                            JwtTokenProvider jwtTokenProvider,
                            EmailService emailService,
                            LoginAttemptService loginAttemptService,
+                           @Qualifier("userKafkaTemplate")
                            KafkaTemplate<String, UserRegisteredEvent> kafkaTemplate) {
+
         this.userRepository = userRepository;
         this.doctorReqRepository = doctorReqRepository;
         this.roleRepository = roleRepository;
@@ -85,6 +89,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AppUser registerUser(UserRegistrationRequest request) {
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
         }
@@ -97,7 +102,7 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        if(request.getEmail().equals("admins@gmail.com")){
+        if (request.getEmail().equals("admins@gmail.com")) {
             Role adminRole = roleRepository.findByName(RoleName.ROLE_ADMIN)
                     .orElseThrow(() -> new RoleNotFoundExpection("Admin role not found"));
             user.setRoles(Set.of(adminRole));
@@ -109,21 +114,21 @@ public class AuthServiceImpl implements AuthService {
 
         AppUser savedUser = userRepository.save(user);
 
-        // Publish Kafka event (UUID → String)
+        // 🔧 FIXED: removed extra null parameter
         UserRegisteredEvent event = new UserRegisteredEvent(
                 savedUser.getId().toString(),
                 savedUser.getEmail(),
-                savedUser.getUsername(),
-                null // no license for normal users
+                savedUser.getUsername()
         );
+
         kafkaTemplate.send("user-registered", event.getUserId(), event);
 
         return savedUser;
     }
 
-
     @Override
     public AppUser registerDoctor(DoctorRegistrationRequest request) {
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
         }
@@ -131,7 +136,6 @@ public class AuthServiceImpl implements AuthService {
             throw new UserAlreadyExistsException("Username already in use");
         }
 
-        // Save license file and get URL
         String licenseUrl = saveLicenseFile(request.getLicense());
 
         AppUser user = new AppUser();
@@ -145,33 +149,31 @@ public class AuthServiceImpl implements AuthService {
 
         AppUser savedUser = userRepository.save(user);
 
-        // Save doctor request entity
         DoctorRequest doctorRequest = DoctorRequest.builder()
                 .doctorLicence(licenseUrl)
                 .status(DoctorRequestStatus.PENDING)
                 .user(savedUser)
                 .build();
+
         doctorReqRepository.save(doctorRequest);
         return savedUser;
     }
-
 
     private String saveLicenseFile(MultipartFile file) {
         try {
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
-                log.info("Created upload directory: {}", uploadPath.toAbsolutePath());
             }
 
             String filename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
             Path filePath = uploadPath.resolve(filename);
+
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-
             return "/uploads/documents/" + filename;
+
         } catch (IOException e) {
-            log.error("Failed to store license file: {}", e.getMessage(), e);
+            log.error("Failed to store license file", e);
             throw new RuntimeException("Failed to store license file", e);
         }
     }
@@ -182,18 +184,19 @@ public class AuthServiceImpl implements AuthService {
         AppUser userInfo = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException("Email does not exist"));
 
-
         if (loginAttemptService.isAccountLocked(userInfo)) {
-            throw new RuntimeException("Account is locked due to multiple failed login attempts. Try again later.");
+            throw new RuntimeException("Account is locked due to multiple failed login attempts");
         }
 
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
             );
 
             AppUser user = (AppUser) authentication.getPrincipal();
-
             loginAttemptService.loginSucceeded(user);
 
             String jwt = jwtTokenProvider.generateToken(authentication, user.getId());
@@ -212,14 +215,10 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-
     @Override
     public LoginResponseDto loginUserWithCookie(LoginRequestDto request, HttpServletResponse response) {
 
-
         JwtResponse jwtResponse = loginUser(request);
-        Set<String> roleList = jwtTokenProvider.getRolesFromToken(jwtResponse.getToken());
-
         setJwtCookie(response, jwtResponse.getToken());
 
         return new LoginResponseDto(
@@ -229,8 +228,6 @@ public class AuthServiceImpl implements AuthService {
                 jwtResponse.getRole()
         );
     }
-
-
 
     @Override
     public void logout(HttpServletResponse response) {
@@ -252,56 +249,40 @@ public class AuthServiceImpl implements AuthService {
     private void clearJwtCookie(HttpServletResponse response) {
         Cookie cookie = new Cookie("jwt", "");
         cookie.setHttpOnly(true);
-        cookie.setSecure(false);
         cookie.setPath("/");
         cookie.setMaxAge(0);
-
         response.addCookie(cookie);
     }
 
     @Override
     public void forgetPassword(ForgotPasswordRequest request) {
-        String email = request.getEmail();
 
-        AppUser user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+        AppUser user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         int token = (int) (Math.random() * 900000) + 100000;
         user.setResetToken(String.valueOf(token));
         user.setTokenExpiry(LocalDateTime.now().plusMinutes(1));
+
         userRepository.save(user);
 
-        try {
-            emailService.sendSimpleEmail(
-                    user.getEmail(),
-                    "Password Reset Code",
-                    "Your password reset code is: " + token + ". It expires in 1 minute."
-            );
-
-        } catch (Exception e) {
-            log.error("Failed to send password reset email to {}. Reason: {}", user.getEmail(), e.getMessage());
-            throw new EmailSendException("Failed to send password reset email. Please try again later.");
-        }
+        emailService.sendSimpleEmail(
+                user.getEmail(),
+                "Password Reset Code",
+                "Your password reset code is: " + token + ". It expires in 1 minute."
+        );
     }
 
     @Override
     public boolean verifyResetToken(VerifyResetTokenRequest request) {
+
         AppUser user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (user.getResetToken() == null || user.getTokenExpiry() == null) {
-            return false;
-        }
+        if (user.getResetToken() == null || user.getTokenExpiry() == null) return false;
+        if (!user.getResetToken().equals(request.getToken())) return false;
 
-        if (!user.getResetToken().equals(request.getToken())) {
-            return false;
-        }
-
-        if (user.getTokenExpiry().isBefore(LocalDateTime.now())) {
-            return false;
-        }
-
-        return true;
+        return user.getTokenExpiry().isAfter(LocalDateTime.now());
     }
 
     @Override
@@ -322,8 +303,10 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
+
     @Override
     public void changePassword(AppUser user, ChangePasswordRequest request) {
+
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new IncorrectOldPasswordException();
         }
