@@ -1,7 +1,12 @@
 package com.example.auth_service.service.Impl;
 
 import com.example.auth_service.config.JwtTokenProvider;
-import com.example.auth_service.dto.*;
+import com.example.auth_service.dto.request.*;
+import com.example.auth_service.dto.response.JwtResponse;
+import com.example.auth_service.dto.response.LoginResponseDto;
+import com.example.auth_service.enums.DoctorRequestStatus;
+import com.example.auth_service.enums.RoleName;
+import com.example.auth_service.event.UserRegisteredEvent;
 import com.example.auth_service.globalExpection.*;
 import com.example.auth_service.model.*;
 import com.example.auth_service.repository.DoctorReqRepository;
@@ -19,6 +24,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,7 +38,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.Set;
 
 @Service
@@ -93,71 +99,93 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
         }
+
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new UserAlreadyExistsException("Username already in use");
         }
+
 
         AppUser user = new AppUser();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setDateOfBirth(request.getDateOfBirth());
+        user.setGender(request.getGender());
+        user.setCountry(request.getCountry());
 
-        if (request.getEmail().equals("admins@gmail.com")) {
-            Role adminRole = roleRepository.findByName(RoleName.ROLE_ADMIN)
-                    .orElseThrow(() -> new RoleNotFoundExpection("Admin role not found"));
-            user.setRoles(Set.of(adminRole));
-        } else {
-            Role patientRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
-                    .orElseThrow(() -> new RoleNotFoundExpection("Default role not found"));
-            user.setRoles(Set.of(patientRole));
-        }
+        Role patientRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
+                .orElseThrow(() -> new RoleNotFoundExpection("Default role not found"));
+        user.setRoles(Set.of(patientRole));
 
         AppUser savedUser = userRepository.save(user);
 
-        // 🔧 FIXED: removed extra null parameter
-        UserRegisteredEvent event = new UserRegisteredEvent(
-                savedUser.getId().toString(),
-                savedUser.getEmail(),
-                savedUser.getUsername()
-        );
+        UserRegisteredEvent event = UserRegisteredEvent.builder()
+                .userId(savedUser.getId().toString())
+                .email(savedUser.getEmail())
+                .username(savedUser.getUsername())
+                .gender(savedUser.getGender())
+                .dateOfBirth(savedUser.getDateOfBirth().toString())
+                .country(savedUser.getCountry())
+                .build();
 
         kafkaTemplate.send("user-registered", event.getUserId(), event);
+
+
 
         return savedUser;
     }
 
+
     @Override
-    public AppUser registerDoctor(DoctorRegistrationRequest request) {
+    public void registerDoctor(DoctorRegistrationRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already in use");
         }
+
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new UserAlreadyExistsException("Username already in use");
         }
 
         String licenseUrl = saveLicenseFile(request.getLicense());
 
-        AppUser user = new AppUser();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-
-        Role doctorRole = roleRepository.findByName(RoleName.ROLE_DOCTOR)
-                .orElseThrow(() -> new RoleNotFoundExpection("Doctor role not found"));
-        user.setRoles(Set.of(doctorRole));
-
-        AppUser savedUser = userRepository.save(user);
-
         DoctorRequest doctorRequest = DoctorRequest.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .dateOfBirth(request.getDateOfBirth())
+                .gender(request.getGender())
+                .country(request.getCountry())
                 .doctorLicence(licenseUrl)
                 .status(DoctorRequestStatus.PENDING)
-                .user(savedUser)
                 .build();
 
         doctorReqRepository.save(doctorRequest);
-        return savedUser;
     }
+
+    @Override
+    public AppUser approveDoctor(Long requestId) {
+        DoctorRequest req = doctorReqRepository.findById(requestId)
+                .orElseThrow(() -> new UserNotFoundException("Doctor request not found"));
+
+        AppUser doctor = new AppUser();
+        doctor.setUsername(req.getUsername());
+        doctor.setEmail(req.getEmail());
+        doctor.setPassword(req.getPassword());
+        doctor.setDateOfBirth(req.getDateOfBirth());
+        doctor.setGender(req.getGender());
+        doctor.setCountry(req.getCountry());
+        doctor.setRoles(Set.of(roleRepository.findByName(RoleName.ROLE_DOCTOR)
+                .orElseThrow(() -> new RoleNotFoundExpection("Doctor role not found"))));
+
+        AppUser saved = userRepository.save(doctor);
+        req.setStatus(DoctorRequestStatus.APPROVED);
+        doctorReqRepository.save(req);
+
+        return saved;
+    }
+
+
 
     private String saveLicenseFile(MultipartFile file) {
         try {
@@ -182,10 +210,14 @@ public class AuthServiceImpl implements AuthService {
     public JwtResponse loginUser(LoginRequestDto request) {
 
         AppUser userInfo = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UserNotFoundException("Email does not exist"));
+                .orElseThrow(() ->
+                        new UserNotFoundException("Email does not exist")
+                );
 
         if (loginAttemptService.isAccountLocked(userInfo)) {
-            throw new RuntimeException("Account is locked due to multiple failed login attempts");
+            throw new AccountLockedException(
+                    "Account is locked due to multiple failed login attempts"
+            );
         }
 
         try {
@@ -209,11 +241,16 @@ public class AuthServiceImpl implements AuthService {
                     user.getRoles()
             );
 
-        } catch (Exception ex) {
+        } catch (BadCredentialsException ex) {
             loginAttemptService.loginFailed(userInfo);
-            throw new RuntimeException("Invalid credentials");
+            throw new UserNotFoundException("Invalid email or password");
+
+        } catch (LockedException ex) {
+            throw new AccountLockedException("Account is locked");
+
         }
     }
+
 
     @Override
     public LoginResponseDto loginUserWithCookie(LoginRequestDto request, HttpServletResponse response) {

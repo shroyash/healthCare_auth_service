@@ -1,12 +1,15 @@
 package com.example.auth_service.service;
 
-import com.example.auth_service.dto.*;
+import com.example.auth_service.dto.request.*;
+import com.example.auth_service.dto.response.JwtResponse;
+import com.example.auth_service.dto.response.LoginResponseDto;
 import com.example.auth_service.model.AppUser;
 import jakarta.servlet.http.HttpServletResponse;
 
 public interface AuthService {
     AppUser registerUser(UserRegistrationRequest request);
-    AppUser registerDoctor(DoctorRegistrationRequest request);
+    AppUser approveDoctor(Long requestId);
+    void registerDoctor(DoctorRegistrationRequest request);
     JwtResponse loginUser(LoginRequestDto request);
     LoginResponseDto loginUserWithCookie(LoginRequestDto request, HttpServletResponse response);
     void logout(HttpServletResponse response);

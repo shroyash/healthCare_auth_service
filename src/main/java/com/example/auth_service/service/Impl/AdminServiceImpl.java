@@ -1,9 +1,16 @@
 package com.example.auth_service.service.Impl;
 
-import com.example.auth_service.dto.*;
+import com.example.auth_service.dto.request.DoctorRequestDto;
+import com.example.auth_service.dto.response.DoctorRequestResponse;
+import com.example.auth_service.dto.response.UserResponseDto;
+import com.example.auth_service.enums.DoctorRequestStatus;
+import com.example.auth_service.enums.RoleName;
+import com.example.auth_service.event.DoctorRegisteredEvent;
 import com.example.auth_service.globalExpection.RoleNotFoundExpection;
 import com.example.auth_service.globalExpection.UserNotFoundException;
-import com.example.auth_service.model.*;
+import com.example.auth_service.model.AppUser;
+import com.example.auth_service.model.DoctorRequest;
+import com.example.auth_service.model.Role;
 import com.example.auth_service.repository.DoctorReqRepository;
 import com.example.auth_service.repository.RoleRepository;
 import com.example.auth_service.repository.UserRepository;
@@ -17,8 +24,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -46,6 +53,8 @@ public class AdminServiceImpl implements AdminService {
         this.emailService = emailService;
         this.kafkaTemplate = kafkaTemplate;
     }
+
+    // ================= USERS =================
 
     @Override
     public Page<UserResponseDto> getAllUsers(Pageable pageable) {
@@ -92,7 +101,6 @@ public class AdminServiceImpl implements AdminService {
 
         user.getRoles().clear();
         user.getRoles().add(role);
-
         userRepository.save(user);
 
         return new UserResponseDto(
@@ -104,14 +112,30 @@ public class AdminServiceImpl implements AdminService {
         );
     }
 
+    // ================= DOCTOR REQUESTS =================
+
     @Override
     public List<DoctorRequestDto> getAllDoctorRequests() {
-        return doctorReqRepository.findAllWithUser()
+        return doctorReqRepository.findAll()
                 .stream()
                 .map(dr -> DoctorRequestDto.builder()
                         .doctorReqId(dr.getDoctorReqId())
-                        .userName(dr.getUser().getUsername())
-                        .email(dr.getUser().getEmail())
+                        .userName(dr.getUsername())
+                        .email(dr.getEmail())
+                        .doctorLicence(dr.getDoctorLicence())
+                        .status(dr.getStatus())
+                        .build())
+                .toList();
+    }
+
+    @Override
+    public List<DoctorRequestDto> getPendingDoctorRequests() {
+        return doctorReqRepository.findByStatus(DoctorRequestStatus.PENDING)
+                .stream()
+                .map(dr -> DoctorRequestDto.builder()
+                        .doctorReqId(dr.getDoctorReqId())
+                        .userName(dr.getUsername())
+                        .email(dr.getEmail())
                         .doctorLicence(dr.getDoctorLicence())
                         .status(dr.getStatus())
                         .build())
@@ -120,124 +144,92 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     @Transactional
-    public DoctorRequestResponse setRejectOrAccept(String token, long doctorReqId, boolean approve) {
+    public DoctorRequestResponse setRejectOrAccept(long doctorReqId, boolean approve) {
+
         DoctorRequest request = doctorReqRepository.findById(doctorReqId)
-                .orElseThrow(() -> new RuntimeException("Doctor request not found"));
+                .orElseThrow(() -> new UserNotFoundException("Doctor request not found"));
 
-        // Check if already processed
         if (request.getStatus() != DoctorRequestStatus.PENDING) {
-            throw new RuntimeException("Doctor request has already been processed with status: " + request.getStatus());
+            throw new IllegalStateException(
+                    "Doctor request already processed: " + request.getStatus()
+            );
         }
 
-        AppUser user = request.getUser();
-
-        if (user == null) {
-            throw new RuntimeException("User not found for doctor request");
-        }
-
+        // ================= APPROVE =================
         if (approve) {
-            // APPROVE DOCTOR
-            request.setStatus(DoctorRequestStatus.APPROVED);
+            AppUser user = new AppUser();
+            user.setUsername(request.getUsername());
+            user.setEmail(request.getEmail());
+            user.setPassword(request.getPassword());
+            user.setDateOfBirth(request.getDateOfBirth());
+            user.setGender(request.getGender());
+            user.setCountry(request.getCountry());
 
             Role doctorRole = roleRepository.findByName(RoleName.ROLE_DOCTOR)
                     .orElseThrow(() -> new RoleNotFoundExpection("Doctor role not found"));
 
-            if (user.getRoles() == null) {
-                user.setRoles(new HashSet<>());
-            }
+            user.setRoles(Set.of(doctorRole));
+            AppUser savedUser = userRepository.save(user);
 
-            // Remove patient role and add doctor role
-            user.getRoles().removeIf(role -> role.getName() == RoleName.ROLE_PATIENT);
-            user.getRoles().add(doctorRole);
-
-            // Save to database
+            request.setStatus(DoctorRequestStatus.APPROVED);
             doctorReqRepository.save(request);
-            userRepository.save(user);
 
-            // Send Kafka event with ACTUAL license URL (FIXED)
+            // Kafka
             try {
-                DoctorRegisteredEvent event = new DoctorRegisteredEvent(
-                        user.getId().toString(),
-                        user.getEmail(),
-                        user.getUsername(),
-                        request.getDoctorLicence()  // ✅ FIXED: Now passing actual license URL
-                );
+                DoctorRegisteredEvent event = DoctorRegisteredEvent.builder()
+                        .userId(savedUser.getId().toString())
+                        .email(savedUser.getEmail())
+                        .username(savedUser.getUsername())
+                        .licenseUrl(request.getDoctorLicence())
+                        .gender(request.getGender())
+                        .country(request.getCountry())
+                        .dateOfBirth(request.getDateOfBirth().toString())
+                        .status(DoctorRequestStatus.APPROVED)
+                        .build();
+
                 kafkaTemplate.send("doctor-registered", event.getUserId(), event);
-                log.info("Kafka event sent for doctor approval: userId={}", user.getId());
             } catch (Exception e) {
-                log.error("Failed to send Kafka event for doctor: {}", user.getId(), e);
-                // Don't fail transaction if Kafka fails
+                log.error("Kafka doctor-approved event failed", e);
             }
 
-            // Send approval email
+            // Email
             try {
                 emailService.sendSimpleEmail(
-                        user.getEmail(),
+                        savedUser.getEmail(),
                         "Doctor Account Approved",
-                        "Congratulations! Your doctor registration has been approved. You can now log in and access your doctor dashboard."
+                        "Your doctor account has been approved. You can now log in."
                 );
             } catch (Exception e) {
-                log.error("Failed to send approval email to: {}", user.getEmail(), e);
+                log.error("Approval email failed", e);
             }
-
-            log.info("Doctor approved successfully: userId={}, doctorReqId={}", user.getId(), request.getDoctorReqId());
 
             return DoctorRequestResponse.builder()
                     .doctorReqId(request.getDoctorReqId())
-                    .doctorName(user.getUsername())
+                    .doctorName(savedUser.getUsername())
                     .status(request.getStatus().name())
                     .message("Doctor approved successfully")
                     .build();
-
-        } else {
-            // REJECT DOCTOR
-            request.setStatus(DoctorRequestStatus.REJECTED);
-            doctorReqRepository.save(request);
-
-            // Keep user as patient (for audit trail)
-            Role patientRole = roleRepository.findByName(RoleName.ROLE_PATIENT)
-                    .orElseThrow(() -> new RoleNotFoundExpection("Patient role not found"));
-
-            user.getRoles().clear();
-            user.getRoles().add(patientRole);
-            userRepository.save(user);
-
-            // If you want to delete user instead, uncomment this and comment above role change:
-            // userRepository.delete(user);
-
-            // Send rejection email
-            try {
-                emailService.sendSimpleEmail(
-                        user.getEmail(),
-                        "Doctor Registration Update",
-                        "We regret to inform you that your doctor registration could not be approved at this time. Please contact support for more information."
-                );
-            } catch (Exception e) {
-                log.error("Failed to send rejection email to: {}", user.getEmail(), e);
-            }
-
-            log.info("Doctor rejected: userId={}, doctorReqId={}", user.getId(), request.getDoctorReqId());
-
-            return DoctorRequestResponse.builder()
-                    .doctorReqId(request.getDoctorReqId())
-                    .doctorName(user.getUsername())
-                    .status(request.getStatus().name())
-                    .message("Doctor registration rejected")
-                    .build();
         }
-    }
 
-    @Override
-    public List<DoctorRequestDto> getPendingDoctorRequests() {
-        return doctorReqRepository.findByStatusWithUser(DoctorRequestStatus.PENDING)
-                .stream()
-                .map(dr -> DoctorRequestDto.builder()
-                        .doctorReqId(dr.getDoctorReqId())
-                        .userName(dr.getUser().getUsername())
-                        .email(dr.getUser().getEmail())
-                        .doctorLicence(dr.getDoctorLicence())
-                        .status(dr.getStatus())
-                        .build())
-                .toList();
+        // ================= REJECT =================
+        request.setStatus(DoctorRequestStatus.REJECTED);
+        doctorReqRepository.save(request);
+
+        try {
+            emailService.sendSimpleEmail(
+                    request.getEmail(),
+                    "Doctor Registration Rejected",
+                    "Your doctor registration request was rejected."
+            );
+        } catch (Exception e) {
+            log.error("Rejection email failed", e);
+        }
+
+        return DoctorRequestResponse.builder()
+                .doctorReqId(request.getDoctorReqId())
+                .doctorName(request.getUsername())
+                .status(request.getStatus().name())
+                .message("Doctor registration rejected")
+                .build();
     }
 }

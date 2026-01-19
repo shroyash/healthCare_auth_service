@@ -1,10 +1,9 @@
-package com.example.auth_service.dto;
+package com.example.auth_service.dto.response;
 
 import com.example.auth_service.model.Role;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.util.List;
 import java.util.Set;
 
 @Data

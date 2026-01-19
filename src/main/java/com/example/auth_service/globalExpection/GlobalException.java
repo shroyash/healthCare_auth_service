@@ -1,12 +1,10 @@
 package com.example.auth_service.globalExpection;
 
-import com.example.auth_service.dto.ApiResponse;
+import com.example.auth_service.dto.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.time.LocalDateTime;
 
 @RestControllerAdvice
 public class GlobalException {
@@ -21,6 +19,17 @@ public class GlobalException {
                 .build();
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
+
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccountLockedException(AccountLockedException e) {
+        ApiResponse<Object> response = ApiResponse.builder()
+                .status(false)
+                .message(e.getMessage())
+                .data(null)
+                .build();
+        return new ResponseEntity<>(response, HttpStatus.LOCKED);
+    }
+
 
     // Handle User Already Exists
     @ExceptionHandler(UserAlreadyExistsException.class)

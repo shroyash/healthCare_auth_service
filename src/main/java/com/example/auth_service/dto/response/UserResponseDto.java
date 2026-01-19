@@ -1,9 +1,8 @@
-package com.example.auth_service.dto;
+package com.example.auth_service.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.util.Set;
 

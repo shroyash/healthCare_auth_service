@@ -1,5 +1,6 @@
 package com.example.auth_service.model;
 
+import com.example.auth_service.enums.Gender;
 import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -7,6 +8,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -39,6 +41,13 @@ public class AppUser implements UserDetails {
     @JsonIgnore
     @Column(nullable = false)
     private String password;
+
+    @Column(nullable = false)
+    private Gender gender;
+
+    private LocalDate dateOfBirth;
+
+    private String country;
 
     @Builder.Default
     @Column(name = "created_at", nullable = false)

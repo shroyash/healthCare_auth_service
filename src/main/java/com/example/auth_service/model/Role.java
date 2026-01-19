@@ -1,5 +1,6 @@
 package com.example.auth_service.model;
 
+import com.example.auth_service.enums.RoleName;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,5 +18,5 @@ public class Role {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, unique = true)
-    private RoleName  name; // Example: ROLE_PATIENT
+    private RoleName name; // Example: ROLE_PATIENT
 }

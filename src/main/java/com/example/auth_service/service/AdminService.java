@@ -1,11 +1,9 @@
 package com.example.auth_service.service;
 
-import com.example.auth_service.dto.DoctorRequestDto;
-import com.example.auth_service.dto.DoctorRequestResponse;
-import com.example.auth_service.dto.UserResponseDto;
-import com.example.auth_service.model.DoctorRequest;
-import com.example.auth_service.model.RoleName;
-import com.example.auth_service.model.AppUser;
+import com.example.auth_service.dto.request.DoctorRequestDto;
+import com.example.auth_service.dto.response.DoctorRequestResponse;
+import com.example.auth_service.dto.response.UserResponseDto;
+import com.example.auth_service.enums.RoleName;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -30,6 +28,6 @@ public interface AdminService {
 
     List<DoctorRequestDto> getAllDoctorRequests();
 
-    DoctorRequestResponse setRejectOrAccept(String token, long doctorReqId, boolean approve);
+    DoctorRequestResponse setRejectOrAccept( long doctorReqId, boolean approve);
 
 }

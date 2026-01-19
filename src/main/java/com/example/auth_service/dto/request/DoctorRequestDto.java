@@ -1,6 +1,6 @@
-package com.example.auth_service.dto;
+package com.example.auth_service.dto.request;
 
-import com.example.auth_service.model.DoctorRequestStatus;
+import com.example.auth_service.enums.DoctorRequestStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

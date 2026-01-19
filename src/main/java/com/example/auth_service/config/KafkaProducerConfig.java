@@ -1,7 +1,7 @@
 package com.example.auth_service.config;
 
-import com.example.auth_service.dto.DoctorRegisteredEvent;
-import com.example.auth_service.dto.UserRegisteredEvent;
+import com.example.auth_service.event.DoctorRegisteredEvent;
+import com.example.auth_service.event.UserRegisteredEvent;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;

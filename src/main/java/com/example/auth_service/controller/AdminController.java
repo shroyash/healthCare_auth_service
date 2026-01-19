@@ -1,8 +1,11 @@
 package com.example.auth_service.controller;
 
-import com.example.auth_service.dto.*;
-import com.example.auth_service.model.DoctorRequestStatus;
-import com.example.auth_service.model.RoleName;
+import com.example.auth_service.dto.request.DoctorRequestDto;
+import com.example.auth_service.dto.response.ApiResponse;
+import com.example.auth_service.dto.response.DoctorRequestResponse;
+import com.example.auth_service.dto.response.UserResponseDto;
+import com.example.auth_service.enums.DoctorRequestStatus;
+import com.example.auth_service.enums.RoleName;
 import com.example.auth_service.repository.DoctorReqRepository;
 import com.example.auth_service.service.AdminService;
 import lombok.AllArgsConstructor;
@@ -79,7 +82,7 @@ public class AdminController {
             @RequestParam Long doctorReqId,
             @RequestParam boolean approve
     ) {
-        DoctorRequestResponse response = adminService.setRejectOrAccept(token,doctorReqId, approve);
+        DoctorRequestResponse response = adminService.setRejectOrAccept(doctorReqId, approve);
         String message = approve ? "Doctor request approved" : "Doctor request rejected";
         return ResponseEntity.ok(new ApiResponse<>(true, message, response));
     }

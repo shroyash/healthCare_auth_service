@@ -1,6 +1,6 @@
 package com.example.auth_service.service.Impl;
 
-import com.example.auth_service.dto.UserResponseDto;
+import com.example.auth_service.dto.response.UserResponseDto;
 import com.example.auth_service.model.AppUser;
 import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.service.UserService;

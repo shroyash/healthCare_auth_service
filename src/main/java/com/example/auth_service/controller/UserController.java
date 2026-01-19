@@ -2,11 +2,10 @@ package com.example.auth_service.controller;
 
 
 import com.example.auth_service.config.JwtTokenProvider;
-import com.example.auth_service.dto.ApiResponse;
-import com.example.auth_service.dto.UpdateUsernameRequest;
-import com.example.auth_service.dto.UserResponseDto;
+import com.example.auth_service.dto.response.ApiResponse;
+import com.example.auth_service.dto.request.UpdateUsernameRequest;
+import com.example.auth_service.dto.response.UserResponseDto;
 import com.example.auth_service.model.AppUser;
-import com.example.auth_service.model.Role;
 import com.example.auth_service.service.UserService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;

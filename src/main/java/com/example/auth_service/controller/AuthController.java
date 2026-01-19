@@ -1,12 +1,19 @@
 package com.example.auth_service.controller;
 
-import com.example.auth_service.dto.*;
+import com.example.auth_service.dto.request.*;
+import com.example.auth_service.dto.response.ApiResponse;
+import com.example.auth_service.dto.response.JwtResponse;
+import com.example.auth_service.dto.response.LoginResponseDto;
+import com.example.auth_service.dto.response.UserResponseDto;
 import com.example.auth_service.model.AppUser;
 import com.example.auth_service.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,20 +43,10 @@ public class AuthController {
 
     @PostMapping("/register/doctor")
     public ResponseEntity<ApiResponse<String>> registerDoctor(
-            @RequestParam("username") String username,
-            @RequestParam("email") String email,
-            @RequestParam("password") String password,
-            @RequestParam("license") MultipartFile license
+            @ModelAttribute DoctorRegistrationRequest request,
+            BindingResult result
     ) {
-        DoctorRegistrationRequest request = DoctorRegistrationRequest.builder()
-                .username(username)
-                .email(email)
-                .password(password)
-                .license(license)
-                .build();
-
         authService.registerDoctor(request);
-
         return ResponseEntity.ok(new ApiResponse<>(true, "Doctor registration request sent", null));
     }
 
