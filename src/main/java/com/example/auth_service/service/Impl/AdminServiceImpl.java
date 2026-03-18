@@ -60,6 +60,7 @@ public class AdminServiceImpl implements AdminService {
     public Page<UserResponseDto> getAllUsers(Pageable pageable) {
         return userRepository.findAll(pageable)
                 .map(user -> new UserResponseDto(
+                        user.getId(),
                         user.getUsername(),
                         user.getEmail(),
                         user.getRoles().stream()
@@ -74,6 +75,7 @@ public class AdminServiceImpl implements AdminService {
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         return new UserResponseDto(
+                user.getId(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getRoles().stream()
@@ -104,6 +106,7 @@ public class AdminServiceImpl implements AdminService {
         userRepository.save(user);
 
         return new UserResponseDto(
+                user.getId(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getRoles().stream()

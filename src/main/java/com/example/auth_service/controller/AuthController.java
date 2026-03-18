@@ -31,6 +31,7 @@ public class AuthController {
         AppUser savedUser = authService.registerUser(request);
 
         UserResponseDto response = new UserResponseDto(
+                savedUser.getId(),
                 savedUser.getUsername(),
                 savedUser.getEmail(),
                 savedUser.getRoles().stream()

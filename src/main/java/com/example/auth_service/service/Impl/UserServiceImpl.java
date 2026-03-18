@@ -17,6 +17,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponseDto getProfile(AppUser currentUser) {
         return new UserResponseDto(
+                currentUser.getId(),
                 currentUser.getUsername(),
                 currentUser.getEmail(),
                 currentUser.getRoles().stream()
@@ -31,6 +32,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(currentUser);
 
         return new UserResponseDto(
+                currentUser.getId(),
                 currentUser.getUsername(),
                 currentUser.getEmail(),
                 currentUser.getRoles().stream()

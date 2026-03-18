@@ -11,17 +11,13 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AdminService {
-
-    // List all users with pagination and optional filters
+    
     Page<UserResponseDto> getAllUsers(Pageable pageable);
 
-    // Get a specific user by ID
     UserResponseDto getUserById(UUID id);
 
-    // Delete or deactivate a user
     void deleteUser(UUID id);
 
-    // Change user role
     UserResponseDto changeUserRole(UUID userId, RoleName newRole);
 
     List<DoctorRequestDto> getPendingDoctorRequests();
@@ -29,5 +25,4 @@ public interface AdminService {
     List<DoctorRequestDto> getAllDoctorRequests();
 
     DoctorRequestResponse setRejectOrAccept( long doctorReqId, boolean approve);
-
 }

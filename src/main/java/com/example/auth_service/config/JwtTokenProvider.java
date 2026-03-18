@@ -99,5 +99,36 @@ public class JwtTokenProvider {
         }
     }
 
+    public UUID getUserIdFromToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(publicKey)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            String idStr = claims.get("id", String.class);
+            return idStr != null ? UUID.fromString(idStr) : null;
+        } catch (Exception ex) {
+            log.error("Error extracting userId from token: {}", ex.getMessage());
+            return null;
+        }
+    }
+
+    public String getEmailFromToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(publicKey)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            return claims.get("email", String.class);
+        } catch (Exception ex) {
+            log.error("Error extracting email from token: {}", ex.getMessage());
+            return null;
+        }
+    }
+
 
 }

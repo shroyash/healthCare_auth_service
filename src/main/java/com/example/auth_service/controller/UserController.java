@@ -13,6 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
@@ -27,12 +28,17 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponseDto>> getCurrentUser(
             @CookieValue(name = "jwt", required = true) String token) {
 
+
+        UUID userUUID = jwtTokenProvider.getUserIdFromToken(token);
+        String email = jwtTokenProvider.getEmailFromToken(token);
         String userName = jwtTokenProvider.getUsernameFromToken(token);
         Set<String> roles = jwtTokenProvider.getRolesFromToken(token);
 
 
         UserResponseDto userResponseDto = UserResponseDto.builder()
+                .userId(userUUID)
                 .username(userName)
+                .email(email)
                 .roles(roles)
                 .build();
 
