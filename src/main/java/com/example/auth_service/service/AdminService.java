@@ -25,4 +25,6 @@ public interface AdminService {
     List<DoctorRequestDto> getAllDoctorRequests();
 
     DoctorRequestResponse setRejectOrAccept( long doctorReqId, boolean approve);
+
+    int getPendingDoctorCount();
 }

@@ -3,6 +3,7 @@ package com.example.auth_service.service;
 import com.example.auth_service.dto.request.*;
 import com.example.auth_service.dto.response.JwtResponse;
 import com.example.auth_service.dto.response.LoginResponseDto;
+import com.example.auth_service.dto.response.UserResponseDto;
 import com.example.auth_service.model.AppUser;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -13,6 +14,7 @@ public interface AuthService {
     JwtResponse loginUser(LoginRequestDto request);
     LoginResponseDto loginUserWithCookie(LoginRequestDto request, HttpServletResponse response);
     void logout(HttpServletResponse response);
+    UserResponseDto getCurrentUser(AppUser user);
     void forgetPassword(ForgotPasswordRequest request);
     boolean verifyResetToken(VerifyResetTokenRequest request);
     void resetPassword(ResetPasswordRequest request);

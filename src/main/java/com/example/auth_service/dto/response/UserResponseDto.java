@@ -14,5 +14,5 @@ public class UserResponseDto {
     private UUID userId;
     private String username;
     private String email;
-    private Set<String> roles; // multiple roles as Strings
+    private Set<String> roles;
 }

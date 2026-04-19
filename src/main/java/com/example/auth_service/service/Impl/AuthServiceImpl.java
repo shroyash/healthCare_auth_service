@@ -4,6 +4,7 @@ import com.example.auth_service.config.JwtTokenProvider;
 import com.example.auth_service.dto.request.*;
 import com.example.auth_service.dto.response.JwtResponse;
 import com.example.auth_service.dto.response.LoginResponseDto;
+import com.example.auth_service.dto.response.UserResponseDto;
 import com.example.auth_service.enums.DoctorRequestStatus;
 import com.example.auth_service.enums.RoleName;
 import com.example.auth_service.event.UserRegisteredEvent;
@@ -39,6 +40,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -269,6 +271,18 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(HttpServletResponse response) {
         clearJwtCookie(response);
+    }
+
+    @Override
+    public UserResponseDto getCurrentUser(AppUser user) {
+        return UserResponseDto.builder()
+                .userId(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .roles(user.getRoles().stream()
+                        .map(r -> r.getName().name())
+                        .collect(Collectors.toSet()))
+                .build();
     }
 
     private void setJwtCookie(HttpServletResponse response, String jwt) {

@@ -158,7 +158,6 @@ public class AdminServiceImpl implements AdminService {
             );
         }
 
-        // ================= APPROVE =================
         if (approve) {
             AppUser user = new AppUser();
             user.setUsername(request.getUsername());
@@ -214,7 +213,6 @@ public class AdminServiceImpl implements AdminService {
                     .build();
         }
 
-        // ================= REJECT =================
         request.setStatus(DoctorRequestStatus.REJECTED);
         doctorReqRepository.save(request);
 
@@ -234,5 +232,10 @@ public class AdminServiceImpl implements AdminService {
                 .status(request.getStatus().name())
                 .message("Doctor registration rejected")
                 .build();
+    }
+
+    @Override
+    public int getPendingDoctorCount() {
+        return (int) doctorReqRepository.countByStatus(DoctorRequestStatus.PENDING);
     }
 }
