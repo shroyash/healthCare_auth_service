@@ -51,8 +51,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login-web").permitAll()
-                        .requestMatchers("/api/auth/register/**").permitAll()
-                        .requestMatchers("/api/auth/validate").permitAll()
+                        .requestMatchers("/api/register/**").permitAll()
+                        .requestMatchers("/api/validate").permitAll()
                         .requestMatchers("/health").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/error").permitAll()
@@ -62,6 +62,5 @@ public class SecurityConfig {
 
         return http.build();
     }
-
 
 }

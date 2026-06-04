@@ -100,7 +100,13 @@ public class RegistrationService {
                         .dateOfBirth(savedUser.getDateOfBirth().toString())
                         .country(savedUser.getCountry())
                         .build()
-        );
+        ).whenComplete((result, ex) -> {
+            if (ex != null) {
+                log.error("Kafka send failed", ex);
+            } else {
+                log.info("Kafka send success");
+            }
+        });
 
         return savedUser;
     }

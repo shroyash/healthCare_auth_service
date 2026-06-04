@@ -7,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -25,11 +24,7 @@ import java.util.stream.Collectors;
 public class AppUser implements UserDetails {
 
     @Id
-    @GeneratedValue(generator = "UUID")
-    @org.hibernate.annotations.GenericGenerator(
-            name = "UUID",
-            strategy = "org.hibernate.id.UUIDGenerator"
-    )
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(updatable = false, nullable = false)
     private UUID id;
 
@@ -57,6 +52,10 @@ public class AppUser implements UserDetails {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Builder.Default
+    @Column(nullable = false)
+    private boolean active = true;
+
+    @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",
@@ -65,21 +64,18 @@ public class AppUser implements UserDetails {
     )
     private Set<Role> roles = new HashSet<>();
 
-
     private String resetToken;
-
     private LocalDateTime tokenExpiry;
 
-
+    @Builder.Default
     @Column(nullable = false)
     private int failedAttempts = 0;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean accountLocked = false;
 
     private LocalDateTime lockTime;
-
-
 
     @Override
     @JsonIgnore
@@ -98,12 +94,13 @@ public class AppUser implements UserDetails {
         return true;
     }
 
-
     @Override
     @JsonIgnore
     public boolean isAccountNonLocked() {
         return !this.accountLocked;
     }
+
+
 
     @Override
     @JsonIgnore
@@ -114,6 +111,6 @@ public class AppUser implements UserDetails {
     @Override
     @JsonIgnore
     public boolean isEnabled() {
-        return true;
+        return this.active;
     }
 }

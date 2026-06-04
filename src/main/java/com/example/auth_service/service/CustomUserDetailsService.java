@@ -1,15 +1,14 @@
 package com.example.auth_service.service;
 
 import com.example.auth_service.globalExpection.UserNotFoundException;
-import com.example.auth_service.model.AppUser;
 import com.example.auth_service.repository.UserRepository;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
