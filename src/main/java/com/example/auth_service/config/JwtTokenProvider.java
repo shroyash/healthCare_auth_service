@@ -29,7 +29,7 @@ public class JwtTokenProvider {
 
     public String generateToken(Authentication authentication, UUID userId) {
         AppUser user = (AppUser) authentication.getPrincipal();
-        String username = user.getUsername(); // can be same as email
+        String username = user.getUsername();
         String email = user.getEmail();
         String roles = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -38,18 +38,25 @@ public class JwtTokenProvider {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + 360000000);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .setSubject(username)
                 .claim("id", userId)
-                .claim("username",username)
+                .claim("username", username)
                 .claim("email", email)
                 .claim("roles", roles)
                 .setIssuedAt(now)
-                .setExpiration(expiryDate)
+                .setExpiration(expiryDate);
+
+        if (user.getTokenInvalidatedAt() != null) {
+            builder.claim("tokenInvalidatedAt",
+                    user.getTokenInvalidatedAt()
+                            .toEpochSecond(java.time.ZoneOffset.UTC));
+        }
+
+        return builder
                 .signWith(privateKey, SignatureAlgorithm.RS256)
                 .compact();
     }
-
 
     public boolean validateToken(String token) {
         try {

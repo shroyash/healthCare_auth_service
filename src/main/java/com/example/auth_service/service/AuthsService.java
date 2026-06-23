@@ -6,6 +6,7 @@ import com.example.auth_service.dto.response.JwtResponse;
 import com.example.auth_service.dto.response.LoginResponseDto;
 import com.example.auth_service.dto.response.UserResponseDto;
 import com.example.auth_service.globalExpection.AccountLockedException;
+import com.example.auth_service.globalExpection.AccountSuspendedException;
 import com.example.auth_service.globalExpection.UserNotFoundException;
 import com.example.auth_service.model.AppUser;
 import com.example.auth_service.repository.UserRepository;
@@ -21,6 +22,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +41,12 @@ public class AuthsService {
 
         if (loginAttemptService.isAccountLocked(userInfo)) {
             throw new AccountLockedException("Account is locked due to multiple failed login attempts");
+        }
+
+        if (!userInfo.isActive()) {
+            throw new AccountSuspendedException(
+                    "Account is suspended. Contact support for more information."
+            );
         }
 
         try {
@@ -114,5 +122,10 @@ public class AuthsService {
         cookie.setPath("/");
         cookie.setMaxAge(0);
         response.addCookie(cookie);
+    }
+
+    public AppUser findById(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

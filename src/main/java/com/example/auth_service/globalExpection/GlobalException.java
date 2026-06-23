@@ -9,91 +9,73 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalException {
 
-    // Handle User Not Found
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ApiResponse<Object>> handleUserNotFoundException(UserNotFoundException e) {
-        ApiResponse<Object> response = ApiResponse.builder()
-                .status(false)
-                .message(e.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        return buildResponse(e.getMessage(), HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(AccountLockedException.class)
     public ResponseEntity<ApiResponse<Object>> handleAccountLockedException(AccountLockedException e) {
-        ApiResponse<Object> response = ApiResponse.builder()
-                .status(false)
-                .message(e.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.LOCKED);
+        return buildResponse(e.getMessage(), HttpStatus.LOCKED);
     }
 
-
-    // Handle User Already Exists
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Object>> handleUserAlreadyExistsException(UserAlreadyExistsException e) {
-        ApiResponse<Object> response = ApiResponse.builder()
-                .status(false)
-                .message(e.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return buildResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
-    // Handle Expired or Invalid Token
     @ExceptionHandler(ExpiredOrInvalidTokenException.class)
     public ResponseEntity<ApiResponse<Object>> handleExpiredOrInvalidTokenException(ExpiredOrInvalidTokenException e) {
-        ApiResponse<Object> response = ApiResponse.builder()
-                .status(false)
-                .message(e.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return buildResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
-    // Handle Incorrect Old Password
     @ExceptionHandler(IncorrectOldPasswordException.class)
     public ResponseEntity<ApiResponse<Object>> handleIncorrectOldPassword(IncorrectOldPasswordException e) {
-        ApiResponse<Object> response = ApiResponse.builder()
-                .status(false)
-                .message(e.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return buildResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
-    // Handle Role Not Found
     @ExceptionHandler(RoleNotFoundExpection.class)
     public ResponseEntity<ApiResponse<Object>> handleRoleNotFoundExpection(RoleNotFoundExpection e) {
-        ApiResponse<Object> response = ApiResponse.builder()
-                .status(false)
-                .message(e.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return buildResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
-    // Handle Email Sending Errors
     @ExceptionHandler(EmailSendException.class)
     public ResponseEntity<ApiResponse<Object>> handleEmailSendException(EmailSendException e) {
-        ApiResponse<Object> response = ApiResponse.builder()
-                .status(false)
-                .message(e.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        return buildResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    // Global Exception Handler
+    // NEW: User Already Suspended
+    @ExceptionHandler(UserAlreadySuspendedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUserAlreadySuspendedException(
+            UserAlreadySuspendedException e) {
+        return buildResponse(e.getMessage(), HttpStatus.CONFLICT);
+    }
+
+
+    @ExceptionHandler(AccountSuspendedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccountSuspendedException(
+            AccountSuspendedException e) {
+        return buildResponse(e.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGlobalException(Exception e) {
+        return buildResponse(
+                "Something went wrong: " + e.getMessage(),
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+
+    private ResponseEntity<ApiResponse<Object>> buildResponse(
+            String message,
+            HttpStatus status) {
+
         ApiResponse<Object> response = ApiResponse.builder()
                 .status(false)
-                .message("Something went wrong: " + e.getMessage())
+                .message(message)
                 .data(null)
                 .build();
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+
+        return new ResponseEntity<>(response, status);
     }
 }

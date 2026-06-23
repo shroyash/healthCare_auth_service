@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/auth")
 @AllArgsConstructor
@@ -35,8 +37,18 @@ public class AuthsController {
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponseDto>> getCurrentUser(
-            @AuthenticationPrincipal AppUser currentUser) {
-        UserResponseDto dto = authService.getCurrentUser(currentUser);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Current user fetched successfully", dto));
+            @AuthenticationPrincipal UUID userId) {
+
+        if (userId == null) {
+            return ResponseEntity.status(401)
+                    .body(new ApiResponse<>(false, "Unauthorized", null));
+        }
+
+        AppUser user = authService.findById(userId);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Current user fetched successfully",
+                        authService.getCurrentUser(user))
+        );
     }
 }

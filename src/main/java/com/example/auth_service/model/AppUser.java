@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -44,7 +45,6 @@ public class AppUser implements UserDetails {
     private Gender gender;
 
     private LocalDate dateOfBirth;
-
     private String country;
 
     @Builder.Default
@@ -54,6 +54,15 @@ public class AppUser implements UserDetails {
     @Builder.Default
     @Column(nullable = false)
     private boolean active = true;
+
+    // ── NEW: set this to now() on suspend/password-reset/security-breach.
+    // Any JWT with iat < tokenInvalidatedAt is rejected — kills ALL sessions at once.
+    @Column(name = "token_invalidated_at")
+    private LocalDateTime tokenInvalidatedAt;
+
+    // ── NEW: human-readable reason stored for audit / Kafka event
+    @Column(name = "suspend_reason")
+    private String suspendReason;
 
     @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
@@ -88,29 +97,16 @@ public class AppUser implements UserDetails {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    @JsonIgnore
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+    @Override @JsonIgnore
+    public boolean isAccountNonExpired() { return true; }
 
-    @Override
-    @JsonIgnore
-    public boolean isAccountNonLocked() {
-        return !this.accountLocked;
-    }
+    @Override @JsonIgnore
+    public boolean isAccountNonLocked() { return !this.accountLocked; }
 
+    @Override @JsonIgnore
+    public boolean isCredentialsNonExpired() { return true; }
 
-
-    @Override
-    @JsonIgnore
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    @JsonIgnore
-    public boolean isEnabled() {
-        return this.active;
-    }
+    // Spring Security calls this — false means 403 DisabledException at authenticate()
+    @Override @JsonIgnore
+    public boolean isEnabled() { return this.active; }
 }

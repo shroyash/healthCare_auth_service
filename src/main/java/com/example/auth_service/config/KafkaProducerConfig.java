@@ -2,6 +2,7 @@ package com.example.auth_service.config;
 
 import com.example.auth_service.event.DoctorRegisteredEvent;
 import com.example.auth_service.event.UserRegisteredEvent;
+import com.example.auth_service.event.UserSuspendedEvent;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,5 +56,15 @@ public class KafkaProducerConfig {
     @Bean(name = "doctorKafkaTemplate")
     public KafkaTemplate<String, DoctorRegisteredEvent> doctorKafkaTemplate() {
         return new KafkaTemplate<>(doctorProducerFactory());
+    }
+
+    @Bean(name = "suspendProducerFactory")
+    public ProducerFactory<String, UserSuspendedEvent> suspendProducerFactory() {
+        return new DefaultKafkaProducerFactory<>(baseProducerConfig());
+    }
+
+    @Bean(name = "suspendKafkaTemplate")
+    public KafkaTemplate<String, UserSuspendedEvent> suspendKafkaTemplate() {
+        return new KafkaTemplate<>(suspendProducerFactory());
     }
 }

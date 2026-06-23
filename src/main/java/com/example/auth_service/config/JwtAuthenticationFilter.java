@@ -15,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -42,6 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (token != null && jwtTokenProvider.validateToken(token)) {
                 String username = jwtTokenProvider.getUsernameFromToken(token);
+                UUID userId = jwtTokenProvider.getUserIdFromToken(token);
                 Set<String> rolesStr = jwtTokenProvider.getRolesFromToken(token);
 
                 if (username != null && rolesStr != null) {
@@ -50,7 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             .collect(Collectors.toList());
 
                     UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(username, null, authorities);
+                            new UsernamePasswordAuthenticationToken(userId, null, authorities);
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     log.debug("JWT Token validated for user: {}", username);
